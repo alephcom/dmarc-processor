@@ -14,6 +14,7 @@ use App\Filament\App\Widgets\TenantDomainHealth;
 use App\Filament\App\Widgets\TenantStatsOverview;
 use App\Filament\App\Widgets\TenantVolumeChart;
 use App\Intel\SourceRegistry;
+use App\Models\Alert;
 use App\Models\Domain;
 use App\Models\DomainSource;
 use App\Models\IpIntel;
@@ -170,6 +171,24 @@ class DashboardTest extends TestCase
 
         Livewire::test(AllDomainsHealth::class)->assertCanSeeTableRecords([$this->domain, $other])->assertSee('Acme');
         Livewire::test(MspStatsOverview::class)->assertSee('0 / 2 live');
+    }
+
+    public function test_domain_table_shows_target_policy_and_open_alerts(): void
+    {
+        $this->domain->update(['current_policy' => 'none', 'target_policy' => 'reject']);
+        $alert = fn (bool $open) => Alert::create([
+            'tenant_id' => $this->tenant->id, 'domain_id' => $this->domain->id, 'type' => 'no_reports', 'severity' => 'warning',
+            'dedupe_key' => uniqid(), 'title' => 'Test', 'body' => '', 'opened_at' => now(), 'last_seen_at' => now(),
+            'resolved_at' => $open ? null : now(),
+        ]);
+        $alert(true);
+        $alert(true);
+        $alert(false);
+        $this->actAs(User::ROLE_VIEWER);
+
+        Livewire::test(TenantDomainHealth::class)
+            ->assertSee('Target p=reject')
+            ->assertTableColumnStateSet('open_alerts', 2, $this->domain);
     }
 
     public function test_stat_cards_compare_with_previous_period(): void
