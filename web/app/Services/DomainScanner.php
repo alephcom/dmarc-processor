@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Alerts\AlertEvaluator;
 use App\Dns\Checks\CheckResult;
 use App\Dns\Checks\DkimChecker;
 use App\Dns\Checks\DmarcAnalyzer;
@@ -45,7 +46,9 @@ class DomainScanner
             suggestedDmarc: $this->builder->build($existing, $rua),
         );
 
+        $before = $this->snapshot($domain);
         $this->persist($domain, $result->all(), $result->provider, $result->verified());
+        app(AlertEvaluator::class)->afterDnsScan($domain, $before, $result, full: true);
 
         return $result;
     }
@@ -70,9 +73,17 @@ class DomainScanner
             provider: $domain->dns_provider,
             suggestedDmarc: $this->builder->build($existing, $rua),
         );
+        $before = $this->snapshot($domain);
         $this->persist($domain, ['dmarc' => $dmarc, 'rua_auth' => $auth], $domain->dns_provider, $result->verified());
+        app(AlertEvaluator::class)->afterDnsScan($domain, $before, $result, full: false);
 
         return $result;
+    }
+
+    /** @return array{verified: bool, policy: ?string, pct: ?int} */
+    private function snapshot(Domain $domain): array
+    {
+        return ['verified' => $domain->dns_verified_at !== null, 'policy' => $domain->current_policy, 'pct' => $domain->current_pct];
     }
 
     /** @param array<string, CheckResult> $checks */
@@ -97,6 +108,9 @@ class DomainScanner
             if ($dmarc && $dmarc->status !== CheckResult::UNKNOWN) {
                 $updates['current_policy'] = $dmarc->parsed['policy'] ?? null;
                 $updates['current_pct'] = isset($dmarc->parsed['policy']) ? ($dmarc->parsed['pct'] ?? 100) : null;
+                if ($updates['current_policy'] !== $domain->current_policy || $updates['current_pct'] !== $domain->current_pct || ! $domain->policy_changed_at) {
+                    $updates['policy_changed_at'] = $now;
+                }
                 $updates['dns_verified_at'] = $verified ? ($domain->dns_verified_at ?? $now) : null;
             }
             $domain->forceFill($updates)->save();

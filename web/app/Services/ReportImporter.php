@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Alerts\AlertEvaluator;
 use App\Dmarc\AggregateReportParser;
 use App\Dmarc\Data\AggregateReport;
 use App\Dmarc\ReportExtractor;
@@ -25,6 +26,7 @@ class ReportImporter
         private readonly AggregateReportParser $parser,
         private readonly StatsAggregator $stats,
         private readonly SourceRegistry $registry,
+        private readonly AlertEvaluator $alerts,
     ) {}
 
     /** @var list<int> */
@@ -105,6 +107,7 @@ class ReportImporter
                 'first_report_at' => $domain->first_report_at ?? $now,
                 'last_report_at' => $now,
             ])->save();
+            $this->alerts->afterImport($domain);
         }
 
         $status = match (true) {

@@ -2,6 +2,7 @@
 
 namespace App\Intel;
 
+use App\Alerts\AlertManager;
 use App\Models\DomainSource;
 use App\Models\IpIntel;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,10 @@ class SourceRegistry
 
         foreach ($changed->groupBy('domain_id') as $domainId => $rows) {
             $this->sync((int) $domainId);
+            // The sender now has a better identity; a "new sender" alert raised under the old key is superseded.
+            foreach ($rows->pluck('source_key') as $oldKey) {
+                app(AlertManager::class)->resolveKey("new_sender:{$domainId}:{$oldKey}");
+            }
             // If the user had already classified the old grouping, keep that decision.
             $target = DomainSource::where('domain_id', $domainId)->where('source_key', $newKey)->first();
             if ($target && $target->classification === 'unknown') {

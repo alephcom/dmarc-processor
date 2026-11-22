@@ -23,7 +23,7 @@ See [`docs/SPEC.md`](docs/SPEC.md) for the full design.
 | M4 Tenancy, users/roles, invitations, 2FA, impersonation, audit | 🟡 tenancy, roles, 2FA done; invitations/impersonation/audit to do |
 | M5 Setup wizard (DNS scanner, record builder, verify) | ✅ |
 | M6 Dashboards, sender identification | ✅ |
-| M7 Alerts, channels, digests, policy guide | ⏳ |
+| M7 Alerts, channels, digests, policy guide | ✅ |
 | M8 Printable reports, SSO, install command, docs | ⏳ |
 
 ## Deploying (single VPS)

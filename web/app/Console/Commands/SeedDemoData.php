@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Alerts\AlertEvaluator;
 use App\Intel\SourceRegistry;
 use App\Models\Domain;
+use App\Models\DomainSource;
 use App\Models\IpIntel;
 use App\Models\KnownSender;
 use App\Models\Report;
@@ -96,6 +98,11 @@ class SeedDemoData extends Command
         }
         $registry->sync($domain->id);
         $domain->update(['first_report_at' => now()->subDays(29), 'last_report_at' => now()]);
+
+        // The customer has recognised their own services; SendGrid is one of them but is misconfigured.
+        DomainSource::where('domain_id', $domain->id)->whereIn('label', ['Google Workspace', 'Mailchimp', 'SendGrid'])->update(['classification' => 'legit']);
+        DomainSource::where('domain_id', $domain->id)->where('label', 'like', 'AS64511%')->update(['classification' => 'suspicious']);
+        app(AlertEvaluator::class)->afterImport($domain->fresh());
 
         $this->info("Demo ready: sign in at /app as demo@example.com / demo-password-123 (tenant: {$tenant->name}).");
 

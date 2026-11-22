@@ -34,6 +34,7 @@ class Domain extends Model
             'first_report_at' => 'datetime',
             'dns_checked_at' => 'datetime',
             'dns_verified_at' => 'datetime',
+            'policy_changed_at' => 'datetime',
             'last_report_at' => 'datetime',
         ];
     }
@@ -127,6 +128,11 @@ class Domain extends Model
     public function sources(): HasMany
     {
         return $this->hasMany(DomainSource::class);
+    }
+
+    public function alerts(): HasMany
+    {
+        return $this->hasMany(Alert::class);
     }
 
     public function dnsChecks(): HasMany

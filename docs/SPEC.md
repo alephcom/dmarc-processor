@@ -144,8 +144,8 @@ All tenant-owned tables carry `tenant_id` with a global scope; Filament's tenanc
 | `daily_domain_stats` | domain_id, day, total, dmarc_pass, spf_aligned, dkim_aligned, quarantined, rejected |
 | `daily_source_stats` | domain_id, day, source key, same counters |
 | `alert_rules` | tenant_id (null = MSP-wide default), type, thresholds JSON, enabled |
-| `alert_events` | domain_id, rule_id, severity, payload, opened_at, resolved_at |
-| `notification_channels` | tenant_id, type (`email`, `webhook`), config (encrypted), events subscribed |
+| `alerts` | tenant_id (null = MSP-level), domain_id, type, severity, dedupe_key, title, body, data, opened_at, last_seen_at, resolved_at, resolution (auto/manual/expired) |
+| `notification_channels` | tenant_id (null = MSP channel, receives every alert), type (`email`, `webhook`), config (encrypted: addresses or url + secret), alert_types, min_severity |
 | `audit_log` | actor, tenant_id, action, subject, changes |
 
 Retention job (nightly, `dmarc:prune`):
@@ -203,6 +203,13 @@ A "Next step" card driven by observed data:
 
 The card shows the exact new record to publish and the evidence behind the suggestion. Any regression (a new unknown sender, a drop in pass rate) blocks the next step.
 
+Implementation notes (`PolicyAdvisor`):
+- States: `setup` (record not live), `blocked` (sender health fails), `wait` (healthy, not enough time), `ready` (record shown), `done` (at target).
+- "Time at step" uses `domains.policy_changed_at`, set by the DNS scanner whenever the published p/pct changes.
+- "Unknown" means *not classified*: marking a spoofer `suspicious` removes it from the 1% share, which is the intended workflow.
+- If no source is marked `legit` yet, the guide is blocked with a prompt to classify senders.
+- A target of `quarantine` stops the ladder at `quarantine` 100%.
+
 ---
 
 ## 7. Monitoring
@@ -236,26 +243,35 @@ Charts show messages passing vs failing DMARC as stacked bars (daily; weekly for
 - Attribution: DB-IP's free database is CC BY 4.0; the senders table credits it when it is in use.
 
 ### Alerts (defaults; tenants can tune thresholds)
-| Alert | Trigger |
-|---|---|
-| New unknown sender | A source not previously seen, sending above N msgs/day |
-| Failure spike | DMARC pass rate drops by more than X points vs the 7-day baseline |
-| Legit source failing | A `legit` source drops below 95% aligned |
-| No reports | No reports received for an active domain in 72h |
-| DNS changed | Daily DNS check finds the DMARC/SPF record changed, removed, or our `rua` missing |
-| SPF lookup limit | SPF exceeds 10 lookups |
-| Ingest failures | (MSP only) parse failures or receiver dead-letters |
+| Alert | Trigger | Severity | Clears when |
+|---|---|---|---|
+| New unknown sender | An unclassified source first seen in the last 2 days, peaking at ≥ 10 msgs/day. Not raised in a domain's first 7 days of reports (everything is new then). Checked hourly, after sender identification has run. | warning (info if it passes DMARC) | the source is classified, or after 7 days |
+| Failure spike | Latest day's pass rate ≥ 10 points below the previous 7 days (both ≥ 50 msgs) | warning (critical at 2× threshold) | the next day is back within range |
+| Legit source failing | A `legit` source below 95% pass over 2 days (≥ 20 msgs) | critical | it recovers |
+| No reports | No report for an active domain in 72h | warning | a report arrives |
+| DMARC record changed | Record removed / our `rua` dropped (only after it was verified), or policy weakened | critical / warning | record verified again / after 7 days |
+| SPF record broken | SPF has error-level issues (lookups > 10, missing include, loop, `+all`...), once setup is done | warning | SPF is fixed |
+| Ingest failures | (MSP only) ≥ 1 failed/quarantined inbound message in the last hour | warning | an hour with none |
 
-Alerts deduplicate while open and auto-resolve when the condition clears.
+- One open alert per dedupe key: repeated detections refresh it instead of notifying again; a failed DNS lookup is never treated as a change.
+- Managers can mark an alert resolved; it reopens if detected again.
+- Settings: MSP defaults (Admin → Default alert settings) and per-tenant overrides (Settings → Alerts & summaries).
 
 ### Notification channels
-- **Email:** via the configured SMTP relay
-- **Generic webhook:** JSON POST with HMAC signature, suitable for PSA tools
-- **In-app:** Filament database notifications (bell icon)
+- **In-app:** Filament database notification to the tenant's owners/admins (super-admins for MSP-level alerts)
+- **Email:** via the configured SMTP relay, on open
+- **Generic webhook:** JSON POST on open and resolve, suitable for PSA tools
+  - Headers: `X-Dmarc-Event`, `X-Dmarc-Timestamp`, `X-Dmarc-Signature: sha256=HMAC-SHA256(secret, timestamp + "." + body)`
+  - SSRF protection: HTTPS only, no credentials in the URL, every resolved address must be public (private, loopback, link-local, CGNAT, metadata, mapped forms all rejected), the connection is pinned to the checked IP, redirects are not followed. Checked when saved and again at send time.
+  - Retries with backoff (30s → 30 min, 5 attempts); the last error is shown on the channel
+- Channels filter by minimum severity and alert type, and have a "Send test" action. MSP channels (`tenant_id` NULL) receive alerts from every tenant.
 
 ### Digests
-- Weekly (default) or monthly email per tenant: per-domain summary, top changes, open alerts, policy next steps
-- MSP-wide digest to super-admins
+- Weekly (Mondays, default) or monthly (1st) email per tenant to owners/admins; tenants choose in Settings → Alerts & summaries
+- Per domain: volume, pass rate and change vs the previous period, *your senders that are failing* (legit sources, fixable), unrecognised/suspicious senders, new senders, policy guide status; then open alerts
+- MSP-wide weekly digest to super-admins: per-customer table, silent domains, platform alerts
+- `dmarc:send-digests` runs daily and guards against double sends; `--force --tenant=<slug>` sends one now
+- Per-user opt-out is not in v1
 
 ### Printable reports
 Per-domain and per-tenant reports for a chosen period:
@@ -296,7 +312,8 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
   - Reachable only on the Docker network (blocked at Caddy)
   - HMAC-signed with a timestamp (±5 min) to prevent replay
 - XML parsing is hardened (no external entities, size/depth limits)
-- Secrets are stored encrypted: webhook URLs, SSO client secrets, TOTP seeds
+- Secrets are stored encrypted: notification channel config (webhook URLs and secrets, email recipients), SSO client secrets, TOTP seeds
+- Tenant-supplied webhook URLs can't reach internal services (see Notification channels)
 - Rate limiting on login and on the receiver
 - Every config change is recorded in the audit log
 
