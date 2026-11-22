@@ -16,7 +16,8 @@ class EnforceTenantMfa
     {
         $tenant = Filament::getTenant();
         $user = $request->user();
-        if ($tenant?->require_mfa && $user && ! $user->getAppAuthenticationSecret()) {
+        // Single sign-on users get their second factor from their identity provider.
+        if ($tenant?->require_mfa && $user && ! $user->getAppAuthenticationSecret() && ! $request->session()->has('auth_via_sso')) {
             $profile = Filament::getProfileUrl();
             if ($profile && ! $request->is(ltrim(parse_url($profile, PHP_URL_PATH), '/'))) {
                 return redirect($profile)->with('status', 'Your organisation requires two-factor authentication.');

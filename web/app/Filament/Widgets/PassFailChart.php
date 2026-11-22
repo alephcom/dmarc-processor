@@ -18,10 +18,15 @@ final class PassFailChart
 
     public const FAIL = '#eb6834';
 
-    /** @param array<string, array{pass: int, fail: int}> $daily */
-    public static function data(array $daily): array
+    /**
+     * Daily points, or weekly buckets for long ranges (a year of daily bars is unreadable).
+     *
+     * @param  array<string, array{pass: int, fail: int}>  $daily
+     * @return array{labels: list<string>, pass: list<int>, fail: list<int>, unit: string}
+     */
+    public static function bucket(array $daily): array
     {
-        // A year of daily bars is unreadable; bucket long ranges by week.
+        $unit = 'day';
         if (count($daily) > 120) {
             $weekly = [];
             foreach ($daily as $day => $v) {
@@ -30,17 +35,29 @@ final class PassFailChart
                 $weekly[$week]['fail'] = ($weekly[$week]['fail'] ?? 0) + $v['fail'];
             }
             $daily = $weekly;
-            $labelPrefix = 'Week of ';
+            $unit = 'week';
         }
 
-        $labels = array_map(fn ($d) => ($labelPrefix ?? '').CarbonImmutable::parse($d)->format('M j'), array_keys($daily));
+        return [
+            'labels' => array_map(fn ($d) => ($unit === 'week' ? 'Week of ' : '').CarbonImmutable::parse($d)->format('M j'), array_keys($daily)),
+            'pass' => array_values(array_column($daily, 'pass')),
+            'fail' => array_values(array_column($daily, 'fail')),
+            'unit' => $unit,
+        ];
+    }
+
+    /** @param array<string, array{pass: int, fail: int}> $daily */
+    public static function data(array $daily): array
+    {
+        $b = self::bucket($daily);
+        $labels = $b['labels'];
 
         return [
             'labels' => $labels,
             'datasets' => [
                 [
                     'label' => 'Passing DMARC',
-                    'data' => array_column($daily, 'pass'),
+                    'data' => $b['pass'],
                     'backgroundColor' => self::PASS,
                     'borderWidth' => 0,
                     'stack' => 'mail',
@@ -48,7 +65,7 @@ final class PassFailChart
                 ],
                 [
                     'label' => 'Failing DMARC',
-                    'data' => array_column($daily, 'fail'),
+                    'data' => $b['fail'],
                     'backgroundColor' => self::FAIL,
                     'borderWidth' => 0,
                     'borderRadius' => ['topLeft' => 4, 'topRight' => 4],

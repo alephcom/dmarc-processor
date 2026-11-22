@@ -7,7 +7,9 @@ use App\Filament\App\Resources\Domains\Widgets\DomainReportersTable;
 use App\Filament\App\Resources\Domains\Widgets\DomainSourcesTable;
 use App\Filament\App\Resources\Domains\Widgets\DomainStatsOverview;
 use App\Filament\App\Resources\Domains\Widgets\DomainVolumeChart;
+use App\Filament\Shared\ReportActions;
 use App\Models\Domain;
+use App\Reports\ShareLinks;
 use App\Services\DomainStats;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -45,6 +47,10 @@ class ViewDomain extends ViewRecord
                 ->icon(Heroicon::OutlinedCalendar)
                 ->button()
                 ->color('gray'),
+            ReportActions::group(
+                fn () => route('reports.domain', ['domain' => $this->record, 'period' => $this->days]),
+                fn () => ShareLinks::domain($this->record, $this->days),
+            ),
             Action::make('setup')
                 ->label(fn (Domain $record) => $record->isOnboarding() ? 'Continue setup' : 'Setup wizard')
                 ->icon(Heroicon::OutlinedSparkles)

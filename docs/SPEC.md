@@ -274,7 +274,7 @@ Charts show messages passing vs failing DMARC as stacked bars (daily; weekly for
 - Per-user opt-out is not in v1
 
 ### Printable reports
-Per-domain and per-tenant reports for a chosen period:
+Per-domain (`/reports/domains/{id}`) and per-tenant (`/reports/tenants/{id}`) reports for a chosen period:
 - MSP-branded
 - Summary, charts (SVG, so they print crisply) and source tables
 - Recommendations and policy next steps
@@ -282,7 +282,9 @@ Per-domain and per-tenant reports for a chosen period:
 Rendered as a dedicated HTML page with a print stylesheet:
 - Hides navigation, A4/Letter page breaks, light theme forced
 - "Print" button; users can choose "Save as PDF" in their browser
-- Shareable via a signed, expiring link so customers can open it without logging in (optional, per report)
+- Shareable via a signed link (14 days) so people without an account can open it. Links carry the tenant's share version; "Revoke all share links" invalidates every one. Owners/admins only.
+- Chart rendered server-side as inline SVG (same colours as the dashboards)
+- Branding from `DMARC_BRAND_NAME`, `DMARC_BRAND_LOGO_URL`, `DMARC_BRAND_CONTACT`
 
 No server-side PDF engine in v1; one could be added later by rendering the same page.
 
@@ -310,9 +312,12 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
   - The session ID is regenerated on each switch, and the session password hash is updated so the session-integrity middleware doesn't log the admin out.
 - **Users (Admin → Users):** edit name/email, toggle super-admin (not on yourself), reset a lost authenticator, delete (not yourself). People join via invitations; super-admins via `dmarc:make-super-admin`.
 - **2FA:** TOTP (Filament's built-in), enforceable per tenant and mandatory for super-admins
-- **SSO (M8, not built yet):** Microsoft Entra ID and Google via Socialite
-  - Per tenant: allowed SSO domains with just-in-time user creation at the `viewer` role
-  - Or invite-only
+- **SSO:** Microsoft Entra ID and Google via Socialite, tenant panel only (super-admins are refused and must use password + TOTP)
+  - Configured per tenant by MSP admins: email domains, allowed Entra directory (tenant) IDs, role for new users (viewer/admin)
+  - Accepted only when the IdP proves the organisation: Google requires `email_verified` and a Workspace `hd` equal to the email domain; Microsoft requires the `tid` from the signature-validated ID token to be allow-listed (the unverified Entra `mail` attribute is never used; the UPN is)
+  - Identity is matched by provider subject ID first, then linked to an existing account by email; otherwise a user is created just-in-time. An account linked to one identity is never re-linked to another.
+  - SSO sessions satisfy a tenant's "require 2FA" setting (the IdP does the second factor)
+  - Buttons appear only for providers with credentials configured
 
 ### Audit log
 - Recorded automatically for user-initiated changes to: domains, sender classifications, notification channels, alert settings, organisation settings, known senders, team memberships, invitations, users (incl. 2FA enabled/disabled), and manual alert resolution. Also: sign-ins, failed sign-ins, invitation acceptance, impersonation start/end.
@@ -349,9 +354,12 @@ MS_CLIENT_ID / MS_CLIENT_SECRET / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
 ```
 
 A first-run CLI (`php artisan dmarc:install`):
-- Creates the first super-admin
-- Prints the DNS records the MSP must publish (MX, A, wildcard `_report._dmarc`)
-- Verifies those records
+- Checks configuration (app key, URL, ingest secret, reports domain, queue, mail), database migrations, IP database
+- Verifies the MSP's DNS: MX for the reports domain, MX host address, the wildcard `_report._dmarc` record (probed with a random label), web UI address
+- Prints the DNS records to publish and offers to create the first super-admin
+- `--check` runs non-interactively and exits non-zero if a required check fails (for scripts/monitoring)
+
+Operator docs: `docs/INSTALL.md`, `docs/OPERATIONS.md`.
 
 ---
 

@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    // Single sign-on (optional). Leave the client ID empty to hide the button.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('APP_URL').'/auth/sso/google/callback',
+    ],
+
+    'microsoft' => [
+        'client_id' => env('MICROSOFT_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+        'redirect' => env('APP_URL').'/auth/sso/microsoft/callback',
+        // Work/school accounts only; personal Microsoft accounts are never accepted.
+        'tenant' => 'organizations',
+    ],
+
 ];

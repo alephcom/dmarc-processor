@@ -12,13 +12,13 @@ class Tenant extends Model
     use HasFactory;
 
     /** Mirrors the column defaults so new, unsaved-and-unreloaded models behave the same. */
-    protected $attributes = ['digest_frequency' => 'weekly', 'retention_days_raw' => 395, 'require_mfa' => false];
+    protected $attributes = ['digest_frequency' => 'weekly', 'retention_days_raw' => 395, 'require_mfa' => false, 'sso_default_role' => 'viewer', 'report_share_version' => 1];
 
-    protected $fillable = ['name', 'slug', 'retention_days_raw', 'require_mfa', 'settings', 'digest_frequency', 'last_digest_at'];
+    protected $fillable = ['name', 'slug', 'retention_days_raw', 'require_mfa', 'settings', 'digest_frequency', 'last_digest_at', 'sso_domains', 'sso_microsoft_tenant_ids', 'sso_default_role'];
 
     protected function casts(): array
     {
-        return ['settings' => 'array', 'require_mfa' => 'boolean', 'last_digest_at' => 'datetime'];
+        return ['settings' => 'array', 'require_mfa' => 'boolean', 'last_digest_at' => 'datetime', 'sso_domains' => 'array', 'sso_microsoft_tenant_ids' => 'array'];
     }
 
     public function users(): BelongsToMany

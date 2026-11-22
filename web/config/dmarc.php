@@ -25,6 +25,11 @@ return [
     // How long cached IP intelligence (rDNS, ASN, sender match) stays fresh.
     'ip_intel_ttl_days' => 30,
 
+    // Branding on printable reports and emails (MSP branding; tenants don't customise).
+    'brand_name' => env('DMARC_BRAND_NAME', env('APP_NAME', 'DMARC Monitor')),
+    'brand_logo_url' => env('DMARC_BRAND_LOGO_URL'), // https URL or /path under public/
+    'brand_contact' => env('DMARC_BRAND_CONTACT'),   // e.g. "support@example-msp.com · 0123 456 789"
+
     // Default retention for raw reports/records when a tenant doesn't override it.
     'default_retention_days' => 395,
 ];

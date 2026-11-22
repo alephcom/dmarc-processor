@@ -24,36 +24,23 @@ See [`docs/SPEC.md`](docs/SPEC.md) for the full design.
 | M5 Setup wizard (DNS scanner, record builder, verify) | ✅ |
 | M6 Dashboards, sender identification | ✅ |
 | M7 Alerts, channels, digests, policy guide | ✅ |
-| M8 Printable reports, SSO, install command, docs | ⏳ |
+| M8 Printable reports, SSO, install command, docs | ✅ |
 
-## Deploying (single VPS)
+## Deploying
 
-1. **DNS** (replace with your domains):
-   - `A dmarc.example-msp.com` → server IP (web UI)
-   - `A mx.reports.example-msp.com` → server IP
-   - `MX reports.example-msp.com` → `mx.reports.example-msp.com` (priority 10)
-   - `TXT *._report._dmarc.reports.example-msp.com` → `v=DMARC1` (authorises reports for any customer domain, RFC 7489 §7.1)
-2. **Firewall**: open TCP 25, 80, 443. Many VPS providers block port 25 by default; ask them to unblock inbound.
-3. **Configure**:
-   ```bash
-   cp .env.example .env   # then fill in hostnames, DB_PASSWORD, INGEST_HMAC_SECRET (openssl rand -hex 32)
-   ```
-   ```bash
-   docker compose run --rm web php artisan key:generate --show   # paste into APP_KEY
-   ```
-4. **Start**:
-   ```bash
-   docker compose up -d --build
-   ```
-   ```bash
-   docker compose exec web php artisan dmarc:make-super-admin you@example-msp.com
-   ```
-5. Download the IP database (also refreshed weekly by the scheduler):
-   ```bash
-   docker compose exec web php artisan dmarc:update-ip-db
-   ```
-   Uses DB-IP's free ASN Lite database by default. Set `IPINFO_TOKEN` (free account at ipinfo.io) to use IPinfo Lite instead.
-6. Sign in at `https://dmarc.example-msp.com/admin`, set up 2FA, create a tenant, then add domains in `/app`.
+See **[docs/INSTALL.md](docs/INSTALL.md)** for the step-by-step guide (DNS, configuration, first run, single sign-on) and **[docs/OPERATIONS.md](docs/OPERATIONS.md)** for upgrades, backups, monitoring and troubleshooting.
+
+In short:
+
+```bash
+cp .env.example .env   # fill in hostnames, secrets, SMTP relay
+```
+```bash
+docker compose up -d --build
+```
+```bash
+docker compose exec web php artisan dmarc:install
+```
 
 ## Development
 

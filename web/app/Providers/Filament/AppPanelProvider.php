@@ -45,6 +45,8 @@ class AppPanelProvider extends PanelProvider
             ->pages([Dashboard::class])
             ->databaseNotifications()
             ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.impersonation-banner'))
+            // SSO is offered on the tenant panel only; MSP admins always use password + 2FA.
+            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('filament.sso-buttons'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
