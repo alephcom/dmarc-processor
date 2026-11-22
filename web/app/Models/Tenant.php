@@ -26,6 +26,26 @@ class Tenant extends Model
         return $this->belongsToMany(User::class)->withPivot('role')->withTimestamps();
     }
 
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(Membership::class);
+    }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(Invitation::class);
+    }
+
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class);
+    }
+
+    public function owners(): BelongsToMany
+    {
+        return $this->users()->wherePivot('role', User::ROLE_OWNER);
+    }
+
     public function alerts(): HasMany
     {
         return $this->hasMany(Alert::class);

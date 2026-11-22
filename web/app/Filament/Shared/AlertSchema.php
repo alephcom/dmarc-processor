@@ -16,6 +16,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 final class AlertSchema
 {
@@ -36,7 +37,7 @@ final class AlertSchema
             ])
             ->filters([
                 TernaryFilter::make('open')->label('Status')->placeholder('All')->trueLabel('Open')->falseLabel('Resolved')
-                    ->queries(true: fn ($q) => $q->whereNull('resolved_at'), false: fn ($q) => $q->whereNotNull('resolved_at'))
+                    ->queries(true: fn (Builder $query) => $query->whereNull('resolved_at'), false: fn (Builder $query) => $query->whereNotNull('resolved_at'))
                     ->default(true),
                 SelectFilter::make('type')->options(AlertType::options(includeMsp: $msp)),
                 SelectFilter::make('severity')->options(Severity::OPTIONS),

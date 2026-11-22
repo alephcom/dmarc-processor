@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Audit\AuditObserver;
+use App\Audit\AuthEventSubscriber;
 use App\Dns\ArrayResolver;
 use App\Dns\Resolver;
 use App\Dns\SystemResolver;
 use App\Intel\AsnDatabase;
 use App\Intel\MmdbAsnDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -34,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        foreach (array_keys(AuditObserver::config()) as $model) {
+            $model::observe(AuditObserver::class);
+        }
+        Event::subscribe(AuthEventSubscriber::class);
     }
 }

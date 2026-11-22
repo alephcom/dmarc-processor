@@ -294,14 +294,31 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
   - `/admin`: MSP super-admins only. All tenants, global settings, known-sender list, ingest queue, audit log
   - `/app`: tenant users, with a tenant switcher if a user belongs to several tenants
 - **Roles**
-  - `owner`/`admin`: manage domains, users, alerts, channels
-  - `viewer`: read-only
-- **Impersonation:** super-admins can impersonate tenant users. This is always audited and shown with a banner.
-- **2FA:** TOTP, enforceable per tenant and mandatory for super-admins
-- **SSO:** Microsoft Entra ID and Google via Socialite
+  - `owner`: everything, including managing other owners
+  - `admin`: domains, senders, alerts, channels, settings, and the team (admins and viewers only)
+  - `viewer`: read-only; no Team, Activity, Notifications or settings pages
+  - Rules (enforced in `TeamService`): nobody changes their own role or removes themselves; only owners grant or touch the owner role; a tenant always keeps at least one owner
+- **Team page** (Settings → Team): members with role and 2FA status, change role, remove, invite; pending invitations with revoke. MSP admins get the same table on each tenant (Members tab).
+- **Invitations**
+  - Emailed link with a random 48-character token; only its SHA-256 hash is stored. Single use, expires after 7 days; re-inviting the same address replaces the old link.
+  - The signed-in account's email must match the invited address.
+  - New users choose a name and password (min 12 characters); their email counts as verified. Existing users sign in first and return to the invitation; a guest cannot set a password for an existing account.
+- **Signing in as a customer (impersonation)**
+  - Super-admins only, from Admin → Users; never as another super-admin or as yourself.
+  - A banner on every page shows who is signed in as whom, with "Return to MSP admin".
+  - Start and end are audited; everything done meanwhile is recorded with both the customer user (actor) and the super-admin (impersonator).
+  - The session ID is regenerated on each switch, and the session password hash is updated so the session-integrity middleware doesn't log the admin out.
+- **Users (Admin → Users):** edit name/email, toggle super-admin (not on yourself), reset a lost authenticator, delete (not yourself). People join via invitations; super-admins via `dmarc:make-super-admin`.
+- **2FA:** TOTP (Filament's built-in), enforceable per tenant and mandatory for super-admins
+- **SSO (M8, not built yet):** Microsoft Entra ID and Google via Socialite
   - Per tenant: allowed SSO domains with just-in-time user creation at the `viewer` role
   - Or invite-only
-- **Invitations:** by email, with signed expiring links
+
+### Audit log
+- Recorded automatically for user-initiated changes to: domains, sender classifications, notification channels, alert settings, organisation settings, known senders, team memberships, invitations, users (incl. 2FA enabled/disabled), and manual alert resolution. Also: sign-ins, failed sign-ins, invitation acceptance, impersonation start/end.
+- Changes made by the system (DNS scanner, report import, scheduled jobs) are not recorded; only allow-listed fields are diffed. Secrets (webhook config, passwords, TOTP seeds) are recorded as "changed" without values.
+- Each entry: when, actor, impersonator, tenant, action, description, before/after changes, IP, user agent.
+- Tenants see their own entries (Settings → Activity, owners/admins); super-admins see everything (Admin → Audit log). Entries are never editable.
 
 ---
 

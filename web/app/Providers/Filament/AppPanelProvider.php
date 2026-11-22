@@ -14,6 +14,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -43,6 +44,7 @@ class AppPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/App/Widgets'), for: 'App\\Filament\\App\\Widgets')
             ->pages([Dashboard::class])
             ->databaseNotifications()
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.impersonation-banner'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

@@ -20,7 +20,7 @@ See [`docs/SPEC.md`](docs/SPEC.md) for the full design.
 | M1 Scaffold (compose, panels, CI) | ✅ |
 | M2 Go smtp-receiver | ✅ |
 | M3 Parser, ingest, dedupe, rollups, retention | ✅ |
-| M4 Tenancy, users/roles, invitations, 2FA, impersonation, audit | 🟡 tenancy, roles, 2FA done; invitations/impersonation/audit to do |
+| M4 Tenancy, users/roles, invitations, 2FA, impersonation, audit | ✅ |
 | M5 Setup wizard (DNS scanner, record builder, verify) | ✅ |
 | M6 Dashboards, sender identification | ✅ |
 | M7 Alerts, channels, digests, policy guide | ✅ |

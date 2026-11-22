@@ -19,6 +19,9 @@ class Domain extends Model
 
     public const STATUS_PAUSED = 'paused';
 
+    /** Mirrors the column defaults so a freshly created model has them without reloading. */
+    protected $attributes = ['status' => self::STATUS_PENDING, 'onboarding_step' => 'overview', 'target_policy' => 'reject'];
+
     protected $fillable = [
         'tenant_id', 'name', 'rua_token', 'status', 'onboarding_step',
         'current_policy', 'current_pct', 'target_policy', 'dkim_selectors',

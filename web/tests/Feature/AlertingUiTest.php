@@ -75,6 +75,12 @@ class AlertingUiTest extends TestCase
         $this->actAs('viewer');
 
         Livewire::test(ListAlerts::class)->assertCanSeeTableRecords([$mine])->assertCanNotSeeTableRecords([$theirs, $msp]);
+
+        // Resolved alerts are hidden by default and shown with the "Resolved" filter.
+        $old = $this->alertFor($this->domain, 'old');
+        app(AlertManager::class)->resolve($old);
+        Livewire::test(ListAlerts::class)->assertCanNotSeeTableRecords([$old])
+            ->filterTable('open', false)->assertCanSeeTableRecords([$old])->assertCanNotSeeTableRecords([$mine]);
         $this->get(AlertResource::getUrl('view', ['record' => $mine], tenant: $this->tenant))->assertOk();
         $this->get(AlertResource::getUrl('view', ['record' => $theirs], tenant: $this->tenant))->assertNotFound();
         $this->get(AlertResource::getUrl('view', ['record' => $msp], tenant: $this->tenant))->assertNotFound();
