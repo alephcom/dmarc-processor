@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('partials.favicon')
     <title>@yield('title') · {{ config('app.name') }}</title>
     <style>
         :root { color-scheme: light dark; --bg: #f9f9f7; --card: #fff; --ink: #18181b; --muted: #52525b; --line: #e4e4e7; --accent: #0369a1; --danger: #b91c1c; }
