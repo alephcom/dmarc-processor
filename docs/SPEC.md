@@ -222,6 +222,8 @@ Charts show messages passing vs failing DMARC as stacked bars (daily; weekly for
   - Last report received
   - Open alerts
 - **Tenant overview:** domains, overall pass rate, alerts
+  - Until a domain has received its first report, a getting-started panel replaces the empty widgets: "Add your first domain" (button for owners/admins), or "Waiting for the first reports" with a link to finish setup for a domain whose DMARC record isn't live yet
+- **Stat cards** (tenant and MSP): message volume and DMARC pass rate show a 30-day daily sparkline and the change against the prior 30 days (volume in %, pass rate in percentage points)
 - **Domain detail**
   - Volume and pass-rate time series (7/30/90/365 days)
   - SPF vs DKIM alignment breakdown

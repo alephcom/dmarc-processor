@@ -11,6 +11,12 @@ use Illuminate\Database\Eloquent\Builder;
 
 class TenantDomainHealth extends DomainHealthTable
 {
+    /** Hidden on an empty workspace, where {@see GettingStarted} takes over. */
+    public static function canView(): bool
+    {
+        return GettingStarted::tenantHasDomains();
+    }
+
     public function table(Table $table): Table
     {
         return parent::table($table)->headerActions([

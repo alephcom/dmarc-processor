@@ -9,8 +9,10 @@ use App\Filament\App\Resources\Domains\Widgets\DomainReportersTable;
 use App\Filament\App\Resources\Domains\Widgets\DomainSourcesTable;
 use App\Filament\App\Resources\Domains\Widgets\DomainStatsOverview;
 use App\Filament\App\Resources\Domains\Widgets\DomainVolumeChart;
+use App\Filament\App\Widgets\GettingStarted;
 use App\Filament\App\Widgets\TenantDomainHealth;
 use App\Filament\App\Widgets\TenantStatsOverview;
+use App\Filament\App\Widgets\TenantVolumeChart;
 use App\Intel\SourceRegistry;
 use App\Models\Domain;
 use App\Models\DomainSource;
@@ -168,5 +170,66 @@ class DashboardTest extends TestCase
 
         Livewire::test(AllDomainsHealth::class)->assertCanSeeTableRecords([$this->domain, $other])->assertSee('Acme');
         Livewire::test(MspStatsOverview::class)->assertSee('0 / 2 live');
+    }
+
+    public function test_stat_cards_compare_with_previous_period(): void
+    {
+        $this->seedTraffic($this->domain);
+        DB::table('daily_domain_stats')->insert([
+            'domain_id' => $this->domain->id, 'day' => now()->subDays(40)->toDateString(), 'total' => 50, 'dmarc_pass' => 50,
+            'spf_aligned' => 50, 'dkim_aligned' => 50, 'quarantined' => 0, 'rejected' => 0,
+        ]);
+        $this->actAs(User::ROLE_VIEWER);
+
+        // 105 messages vs 50 before; 95.2% passing vs 100% before.
+        Livewire::test(TenantStatsOverview::class)
+            ->assertSee('+110% vs prior period')
+            ->assertSee('-4.8 pts vs prior period');
+    }
+
+    public function test_stat_cards_without_previous_data(): void
+    {
+        $this->seedTraffic($this->domain);
+        $this->actAs(User::ROLE_VIEWER);
+
+        Livewire::test(TenantStatsOverview::class)
+            ->assertSee('Nothing to compare yet')
+            ->assertSee('5 failing');
+    }
+
+    public function test_empty_workspace_shows_getting_started(): void
+    {
+        $empty = Tenant::factory()->create();
+        $this->actAs(User::ROLE_ADMIN, $empty);
+
+        $this->get("/app/{$empty->slug}")->assertOk()->assertSee('Add your first domain');
+        $this->assertTrue(GettingStarted::canView());
+        $this->assertFalse(TenantStatsOverview::canView());
+        $this->assertFalse(TenantDomainHealth::canView());
+        $this->assertFalse(TenantVolumeChart::canView());
+        Livewire::test(GettingStarted::class)->assertSee('Add a domain');
+
+        $this->actAs(User::ROLE_VIEWER, $empty);
+        Livewire::test(GettingStarted::class)->assertSee('Ask an owner or admin')->assertDontSee('Add a domain');
+    }
+
+    public function test_getting_started_waits_for_first_report(): void
+    {
+        // Another tenant's reports must not hide this tenant's empty state.
+        Domain::factory()->for(Tenant::factory())->create(['first_report_at' => now()]);
+        $this->actAs(User::ROLE_ADMIN);
+
+        $this->assertTrue(GettingStarted::canView());
+        $this->assertTrue(TenantStatsOverview::canView());
+        $this->assertFalse(TenantVolumeChart::canView());
+        Livewire::test(GettingStarted::class)->assertSee('Waiting for the first reports')->assertSee('acme.test')->assertSee('Continue setup');
+
+        $this->domain->forceFill(['dns_verified_at' => now()])->save();
+        Livewire::test(GettingStarted::class)->assertSee('within 24 to 48 hours')->assertDontSee('Continue setup');
+
+        $this->domain->update(['first_report_at' => now()]);
+        $this->assertFalse(GettingStarted::canView());
+        $this->assertTrue(TenantVolumeChart::canView());
+        $this->get("/app/{$this->tenant->slug}")->assertOk()->assertDontSee('Waiting for the first reports');
     }
 }

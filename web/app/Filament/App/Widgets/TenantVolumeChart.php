@@ -13,6 +13,12 @@ class TenantVolumeChart extends ChartWidget
 {
     protected static ?int $sort = 2;
 
+    /** An all-zero chart says nothing: hidden until the first report, while {@see GettingStarted} explains the wait. */
+    public static function canView(): bool
+    {
+        return GettingStarted::tenantHasReports();
+    }
+
     protected int|string|array $columnSpan = 'full';
 
     protected ?string $maxHeight = '260px';
