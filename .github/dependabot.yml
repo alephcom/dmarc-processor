@@ -1,0 +1,21 @@
+# Weekly update PRs; security updates are raised as soon as an advisory is published.
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: /web
+    schedule: { interval: weekly }
+    groups:
+      laravel-filament:
+        patterns: ["laravel/*", "filament/*", "livewire/*"]
+  - package-ecosystem: npm
+    directory: /web
+    schedule: { interval: weekly }
+  - package-ecosystem: gomod
+    directory: /smtp-receiver
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directories: [/web, /smtp-receiver]
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

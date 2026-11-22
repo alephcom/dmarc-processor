@@ -28,6 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->passwordReset()
             ->profile()
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->brandName(config('app.name').' · MSP Admin')

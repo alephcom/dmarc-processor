@@ -4,6 +4,7 @@ namespace App\Audit;
 
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Events\Dispatcher;
 
 class AuthEventSubscriber
@@ -23,9 +24,14 @@ class AuthEventSubscriber
         Audit::log('auth.failed', "Failed sign-in attempt for {$email}", $e->user, actorId: $e->user?->getAuthIdentifier());
     }
 
+    public function passwordReset(PasswordReset $e): void
+    {
+        Audit::log('auth.password_reset', "Password reset by email link: {$e->user->email}", $e->user, actorId: $e->user->getAuthIdentifier());
+    }
+
     /** @return array<class-string, string> */
     public function subscribe(Dispatcher $events): array
     {
-        return [Login::class => 'login', Failed::class => 'failed'];
+        return [Login::class => 'login', Failed::class => 'failed', PasswordReset::class => 'passwordReset'];
     }
 }

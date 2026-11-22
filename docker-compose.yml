@@ -12,6 +12,7 @@ x-app: &app
     QUEUE_CONNECTION: redis
     CACHE_STORE: redis
     SESSION_DRIVER: redis
+    SESSION_ENCRYPT: "true"
   volumes:
     - app_storage:/var/www/html/storage/app
   depends_on:
@@ -43,6 +44,7 @@ services:
       QUEUE_CONNECTION: redis
       CACHE_STORE: redis
       SESSION_DRIVER: redis
+      SESSION_ENCRYPT: "true"
       AUTORUN_ENABLED: "true"        # run migrations and cache config on start
       AUTORUN_LARAVEL_STORAGE_LINK: "false"
     healthcheck:

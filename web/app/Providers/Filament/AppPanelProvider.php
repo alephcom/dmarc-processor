@@ -33,6 +33,7 @@ class AppPanelProvider extends PanelProvider
             ->path('app')
             ->default()
             ->login()
+            ->passwordReset()
             ->profile()
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->tenant(Tenant::class, slugAttribute: 'slug')

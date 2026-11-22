@@ -12,6 +12,7 @@ use App\Intel\MmdbAsnDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -38,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // One password rule for invitations, profile changes and password resets.
+        Password::defaults(fn () => Password::min(12));
+
         // Generated links (share links, invitations, emails) always use the public scheme, even if
         // a request reached the app over the internal plain-HTTP hop.
         if (str_starts_with((string) config('app.url'), 'https://')) {

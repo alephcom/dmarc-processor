@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Guests hitting a protected non-panel route (reports, invitations) sign in on the tenant panel.
         $middleware->redirectGuestsTo('/app/login');
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
         // TLS ends at Caddy, which proxies plain HTTP to this container. The container's port is
         // not published, so only Caddy can reach it. Trust the scheme and client address Caddy sets
