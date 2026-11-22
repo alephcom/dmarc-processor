@@ -4,6 +4,7 @@ namespace App\Filament\App\Resources\Domains\Pages;
 
 use App\Dmarc\RawReportLocator;
 use App\Filament\App\Resources\Domains\DomainResource;
+use App\Filament\Support\CsvExport;
 use App\Models\Report;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -101,6 +102,7 @@ class DomainReports extends ManageRelatedRecords
                         return response()->streamDownload(fn () => print ($xml), $name, ['Content-Type' => 'application/xml']);
                     }),
             ])
+            ->headerActions([CsvExport::action(fn () => $this->getRecord()->name.'-reports')])
             ->emptyStateHeading('No reports yet')
             ->emptyStateDescription('Reports appear here as mailbox providers send them, usually once a day.')
             ->paginated([25, 50, 100]);

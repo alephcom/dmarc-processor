@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\App\Resources\Domains\DomainResource;
+use App\Filament\Support\CsvExport;
 use App\Models\DailyDomainStat;
 use App\Models\Domain;
 use App\Services\DomainStats;
@@ -73,6 +74,7 @@ abstract class DomainHealthTable extends TableWidget
                 ]),
             ])
             ->recordUrl(fn (Domain $d) => DomainResource::getUrl('view', ['record' => $d], panel: 'app', tenant: $d->tenant))
+            ->headerActions([CsvExport::action(fn () => 'domains')])
             ->emptyStateHeading('No domains yet')
             ->paginated([10, 25, 50]);
     }

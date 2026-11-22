@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Resources\Domains\Widgets;
 
+use App\Filament\Support\CsvExport;
 use App\Models\DailySourceStat;
 use App\Models\Domain;
 use App\Models\DomainSource;
@@ -109,6 +110,7 @@ class DomainSourcesTable extends TableWidget
                     ->modalCancelActionLabel('Close')
                     ->schema(fn (DomainSource $r) => $this->detailSchema($r)),
             ])
+            ->headerActions([CsvExport::action(fn () => $this->record->name.'-senders-'.$this->days.'d')])
             // Clicking anywhere on a row opens its details.
             ->recordAction('details')
             ->emptyStateHeading('No senders in this period')
