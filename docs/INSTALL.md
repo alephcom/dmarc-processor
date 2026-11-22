@@ -147,13 +147,17 @@ By default `/` sends visitors straight to the sign-in page. To offer free hosted
 
 ```
 PUBLIC_SITE_ENABLED=true
+TURNSTILE_SITE_KEY=...      # Cloudflare Turnstile, strongly recommended
+TURNSTILE_SECRET_KEY=...
 # Optional, shown with these defaults:
 PUBLIC_SITE_FREE_MONTHLY_EMAILS=10000
 PUBLIC_SITE_REVIEW_HOURS=48
 PUBLIC_SITE_REPO_URL=https://github.com/alephcom/dmarc-processor
 ```
 
-then run:
+To get the Turnstile keys, open the Cloudflare dashboard → **Turnstile** → **Add widget**, enter your web UI hostname (e.g. `dmarc.example-msp.com`) and choose **Managed** mode. Without the keys the form still works, protected only by rate limiting and a hidden honeypot field, and `dmarc:install --check` shows a warning.
+
+Then run:
 
 ```bash
 docker compose up -d

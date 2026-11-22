@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\AccountRequests\Turnstile;
 use App\Dns\DnsLookupException;
 use App\Dns\Resolver;
 use App\Intel\AsnDatabase;
@@ -44,6 +45,10 @@ class Install extends Command
         $this->check($mx !== '' && ! str_ends_with($mx, 'localhost'), 'MX hostname', $mx ?: '(not set)', 'Set MX_HOSTNAME, e.g. mx.reports.example-msp.com');
         $this->check(config('queue.default') !== 'sync', 'Queue', (string) config('queue.default'), 'Use QUEUE_CONNECTION=redis so report processing runs in the background', warnOnly: true);
         $this->check(! in_array(config('mail.default'), ['log', 'array'], true), 'Outbound mail', (string) config('mail.default'), 'Configure MAIL_* so alerts, invitations and summaries are delivered', warnOnly: true);
+        if (config('dmarc.public_site.enabled')) {
+            $this->check(Turnstile::enabled(), 'Spam protection', Turnstile::enabled() ? 'Cloudflare Turnstile' : 'Turnstile not configured',
+                'Set TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY to protect the public account-request form', warnOnly: true);
+        }
 
         // Database
         try {

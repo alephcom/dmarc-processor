@@ -49,10 +49,12 @@
         .check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; }
         .check input { margin-top: 5px; }
         .error { color: var(--danger); font-size: 14px; margin-top: 4px; }
+        .turnstile { margin-top: 20px; min-height: 65px; }
         .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
         footer.site { padding: 32px 0 48px; font-size: 14px; color: var(--muted); }
         footer.site .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
     </style>
+    @stack('head')
 </head>
 <body>
 <header class="site">

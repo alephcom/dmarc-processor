@@ -35,6 +35,12 @@ return [
         ],
     ],
 
+    // Cloudflare Turnstile on the public account-request form. Leave empty to skip the check.
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
     // Single sign-on (optional). Leave the client ID empty to hide the button.
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),

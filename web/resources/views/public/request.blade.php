@@ -4,6 +4,12 @@
 
 @php($limit = number_format(config('dmarc.public_site.free_monthly_emails')))
 
+@if (\App\AccountRequests\Turnstile::enabled())
+    @push('head')
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @endpush
+@endif
+
 @section('content')
 <section>
     <div class="wrap">
@@ -43,6 +49,15 @@
             <label class="check"><input type="checkbox" name="volume" value="1" @checked(old('volume'))> <span>My domains send no more than {{ $limit }} emails a month in total.</span></label>
             <div class="hint">Sending more? We suggest <a href="{{ config('dmarc.public_site.repo_url') }}">running your own copy</a> instead.</div>
             @error('volume')<div class="error">{{ $message }}</div>@enderror
+
+            <p class="hint">The free service doesn't include tech support.</p>
+
+            @if (\App\AccountRequests\Turnstile::enabled())
+                <div class="turnstile">
+                    <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" data-action="{{ \App\AccountRequests\Turnstile::ACTION }}" data-theme="auto"></div>
+                </div>
+                @error('turnstile')<div class="error">{{ $message }}</div>@enderror
+            @endif
 
             <div class="actions"><button class="button" type="submit">Send request</button></div>
         </form>

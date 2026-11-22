@@ -61,6 +61,7 @@
         <div class="callout">
             <p>We'll gladly host anyone whose domains send <strong>up to {{ $limit }} emails a month</strong>: small businesses, charities, clubs, schools and individuals.</p>
             <p>If you send more than that, we suggest running your own copy. The software is free and open source; <a href="{{ $repo }}">follow the instructions on GitHub</a> to set it up on your own server.</p>
+            <p>Please note that the free service <strong>doesn't include tech support</strong>. The setup wizard explains each step, and the documentation is <a href="{{ $repo }}">on GitHub</a>.</p>
         </div>
         <div class="actions">
             <a class="button" href="{{ route('public.request') }}">Request a free account</a>

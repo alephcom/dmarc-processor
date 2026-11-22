@@ -14,6 +14,8 @@ use App\Models\User;
 use App\Team\InvitationMail;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -74,6 +76,7 @@ class PublicSiteTest extends TestCase
             ->assertSee('Request a free account')
             ->assertSee('within 48 hours')
             ->assertSee('up to 10,000 emails a month')
+            ->assertSee('include tech support', false)
             ->assertSee('https://github.com/alephcom/dmarc-processor', false);
         $this->get('/request-account')->assertOk()->assertSee('Domains to protect');
     }
@@ -112,6 +115,52 @@ class PublicSiteTest extends TestCase
         $this->post('/request-account', $this->form());
         $this->post('/request-account', $this->form(['email' => 'pat@example.org']));
         $this->assertSame(1, AccountRequest::count());
+    }
+
+    private function enableTurnstile(): void
+    {
+        config(['services.turnstile.site_key' => 'site-key', 'services.turnstile.secret_key' => 'secret-key']);
+    }
+
+    public function test_turnstile_widget_is_shown_only_when_configured(): void
+    {
+        $this->enable();
+        $this->get('/request-account')->assertDontSee('challenges.cloudflare.com', false);
+
+        $this->enableTurnstile();
+        $this->get('/request-account')
+            ->assertSee('challenges.cloudflare.com/turnstile/v0/api.js', false)
+            ->assertSee('data-sitekey="site-key"', false);
+    }
+
+    public function test_turnstile_token_is_verified_with_cloudflare(): void
+    {
+        $this->enable();
+        $this->enableTurnstile();
+        Mail::fake();
+        Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => true, 'action' => 'account-request'])]);
+
+        $this->post('/request-account', $this->form(['cf-turnstile-response' => 'good-token']))->assertRedirect('/request-account/thanks');
+
+        $this->assertSame(1, AccountRequest::count());
+        Http::assertSent(fn (HttpRequest $r) => $r['secret'] === 'secret-key' && $r['response'] === 'good-token');
+    }
+
+    public function test_failed_or_missing_turnstile_is_rejected(): void
+    {
+        $this->enable();
+        $this->enableTurnstile();
+        Http::fake(['challenges.cloudflare.com/*' => Http::sequence()
+            ->push(['success' => false, 'error-codes' => ['invalid-input-response']])
+            ->push(['success' => true, 'action' => 'some-other-form'])
+            ->push('', 500)]);
+
+        $this->post('/request-account', $this->form())->assertSessionHasErrors('turnstile');
+        foreach (['bad', 'wrong-action', 'cloudflare-down'] as $token) {
+            $this->post('/request-account', $this->form(['cf-turnstile-response' => $token]))->assertSessionHasErrors('turnstile');
+        }
+        $this->assertSame(0, AccountRequest::count());
+        Http::assertSentCount(3); // a missing token never reaches Cloudflare
     }
 
     public function test_submissions_are_rate_limited(): void
