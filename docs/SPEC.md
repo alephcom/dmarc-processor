@@ -285,7 +285,7 @@ Rendered as a dedicated HTML page with a print stylesheet:
 - Shareable via a signed link (14 days) so people without an account can open it. Links carry the tenant's share version; "Revoke all share links" invalidates every one. Owners/admins only.
 - Chart rendered server-side as inline SVG (same colours as the dashboards)
 - Branding from `DMARC_BRAND_NAME`, `DMARC_BRAND_LOGO_URL`, `DMARC_BRAND_CONTACT`
-- Favicon: `web/public/favicon.svg` (source), with `favicon.ico` (16/32/48) and `apple-touch-icon.png` (180) generated from it; linked from both panels, reports and invitation pages via `partials/favicon.blade.php`
+- Favicon: `web/public/favicon.svg` (source), with `favicon.ico` (16/32/48) and `apple-touch-icon.png` (180) generated from it; linked from both panels, reports and invitation pages via `partials/favicon.blade.php` and also used as the panel brand logo next to the name (`filament/brand-logo.blade.php`)
 
 No server-side PDF engine in v1; one could be added later by rendering the same page.
 

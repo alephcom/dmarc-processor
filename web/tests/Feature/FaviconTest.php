@@ -26,4 +26,14 @@ class FaviconTest extends TestCase
                 ->assertSee('apple-touch-icon.png', false);
         }
     }
+
+    public function test_both_panels_use_the_favicon_as_brand_logo(): void
+    {
+        foreach (['/app/login' => config('app.name'), '/admin/login' => config('app.name').' · MSP Admin'] as $url => $name) {
+            $this->get($url)
+                ->assertOk()
+                ->assertSee('<img src="'.asset('favicon.svg').'"', false)
+                ->assertSee($name);
+        }
+    }
 }
