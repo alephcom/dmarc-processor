@@ -2,13 +2,17 @@
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+# The composer image lacks ext-intl (Filament) and ext-pcntl (Horizon); they are only
+# needed at runtime, where the final stage provides them and checks below.
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction \
+    --ignore-platform-req=ext-intl --ignore-platform-req=ext-pcntl
 COPY . .
 RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
 
 FROM serversideup/php:8.3-fpm-nginx
 USER root
-RUN install-php-extensions intl
+RUN install-php-extensions intl \
+    && php -r 'foreach (["intl", "pcntl"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR, "missing ext-$e\n"); exit(1); } }'
 USER www-data
 WORKDIR /var/www/html
 COPY --chown=www-data:www-data --from=vendor /app /var/www/html
