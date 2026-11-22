@@ -143,4 +143,4 @@ The first time a customer's user signs in, they (or their admin) consent to the 
 
 ## 7. Next
 
-See [OPERATIONS.md](OPERATIONS.md) for upgrades, backups, monitoring and troubleshooting.
+See [OPERATIONS.md](OPERATIONS.md) for upgrades, backups, moving to a new server, monitoring and troubleshooting.
