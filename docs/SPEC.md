@@ -18,6 +18,7 @@ A self-hosted, multi-tenant DMARC analyzer for an MSP. It should:
 - Public self-service sign-up and billing
 - Per-tenant white-labeling (MSP branding only)
 - MTA-STS / TLS-RPT / BIMI checks (possible v2)
+- Server-generated PDF files (printable HTML reports instead, see §7)
 
 ### Scale target
 - Up to about 50 tenants and 500 domains on a single VPS
@@ -42,9 +43,9 @@ A self-hosted, multi-tenant DMARC analyzer for an MSP. It should:
 │        app (Laravel + Filament)         │  PHP-FPM + nginx
 └───────┬─────────────────────────┬───────┘
         │                         │
-┌───────▼────────┐   ┌────────────▼──────────┐   ┌─────────┐
-│ worker         │   │ scheduler             │   │ gotenberg│ (PDF)
-│ (Horizon queue)│   │ (schedule:work)       │   └─────────┘
+┌───────▼────────┐   ┌────────────▼──────────┐
+│ worker         │   │ scheduler             │
+│ (Horizon queue)│   │ (schedule:work)       │
 └───────┬────────┘   └────────────┬──────────┘
         └──────────┬──────────────┘
           ┌────────▼───────┐   ┌───────┐
@@ -63,7 +64,7 @@ Deployment: a single `docker-compose.yml` on a Linux VPS. The same app image is 
 | DB | MariaDB 11 |
 | Inbound mail | Custom Go binary (`emersion/go-smtp`) |
 | TLS | Caddy (automatic Let's Encrypt) |
-| PDF | Gotenberg (headless Chromium HTML→PDF) |
+| Reports | Printable HTML pages (print stylesheet) |
 | IP intel | IPinfo Lite / DB-IP ASN (offline, refreshed monthly) + rDNS + built-in known-sender list |
 | Auth extras | TOTP 2FA; Socialite for Microsoft Entra ID & Google SSO |
 
@@ -237,13 +238,18 @@ Alerts deduplicate while open and auto-resolve when the condition clears.
 - Weekly (default) or monthly email per tenant: per-domain summary, top changes, open alerts, policy next steps
 - MSP-wide digest to super-admins
 
-### PDF reports
+### Printable reports
 Per-domain and per-tenant reports for a chosen period:
 - MSP-branded
-- Charts and source tables
-- Recommendations
+- Summary, charts (SVG, so they print crisply) and source tables
+- Recommendations and policy next steps
 
-Rendered from a Blade template via Gotenberg.
+Rendered as a dedicated HTML page with a print stylesheet:
+- Hides navigation, A4/Letter page breaks, light theme forced
+- "Print" button; users can choose "Save as PDF" in their browser
+- Shareable via a signed, expiring link so customers can open it without logging in (optional, per report)
+
+No server-side PDF engine in v1; one could be added later by rendering the same page.
 
 ---
 
@@ -307,7 +313,7 @@ A first-run CLI (`php artisan dmarc:install`):
 | M5 | Setup wizard: DNS scanner (DMARC/SPF/DKIM), record builder, verification |
 | M6 | Dashboards, sender identification (IP intel + known senders + classification) |
 | M7 | Alerts, notification channels, digests, policy progression guide |
-| M8 | PDF reports, SSO, install command, docs (install/upgrade/backup) |
+| M8 | Printable reports, SSO, install command, docs (install/upgrade/backup) |
 
 ---
 
@@ -315,5 +321,4 @@ A first-run CLI (`php artisan dmarc:install`):
 
 1. **MSP domain names**: the actual `APP_URL` / `REPORTS_DOMAIN` (only needed at deploy time)
 2. **IPinfo Lite vs DB-IP**: IPinfo Lite needs a free token but is more accurate; DB-IP needs none. Proposal: support both, with IPinfo preferred
-3. **Gotenberg**: it adds a container of about 1 GB. Alternative: lighter `dompdf` with server-rendered SVG charts (lower fidelity). Proposal: Gotenberg
-4. **Default thresholds** for alerts and policy progression (§6, §7): review the proposed values
+3. **Default thresholds** for alerts and policy progression (§6, §7): review the proposed values
