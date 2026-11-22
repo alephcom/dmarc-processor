@@ -359,6 +359,8 @@ A first-run CLI (`php artisan dmarc:install`):
 - Prints the DNS records to publish and offers to create the first super-admin
 - `--check` runs non-interactively and exits non-zero if a required check fails (for scripts/monitoring)
 
+Installer script (`install.sh`, repository root): checks the server, offers to install Docker (official apt repository), asks for hostnames and the SMTP relay, generates all secrets into `.env`, checks DNS, starts the stack, downloads the IP database, creates the first admin and runs `dmarc:install --check`. Idempotent (also used for upgrades); `--non-interactive` for automation, `--config-only` to only write `.env`. Values are written single-quoted so `$`/`#` in passwords stay literal for both Compose and Laravel.
+
 Operator docs: `docs/INSTALL.md`, `docs/OPERATIONS.md`.
 
 ---

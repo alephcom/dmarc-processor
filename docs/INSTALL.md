@@ -25,6 +25,29 @@ Without the wildcard TXT record, Google and other providers silently drop report
 
 Optionally, set a PTR (reverse DNS) record for the server IP to `mx.reports.example-msp.com`.
 
+## Quick install (recommended)
+
+On a fresh Ubuntu or Debian server, after creating the DNS records in section 2:
+
+```bash
+git clone https://github.com/alephcom/dmarc-processor.git
+```
+```bash
+cd dmarc-processor && sudo ./install.sh
+```
+
+The script:
+- checks the server (ports 25/80/443 free, memory) and offers to install Docker from Docker's official repository;
+- asks for your hostnames and SMTP relay, generates every secret and writes `.env` (mode 600);
+- checks that your DNS resolves, then builds and starts the stack;
+- downloads the IP database, creates the first MSP admin, and runs `dmarc:install --check`.
+
+Re-running it is safe: existing settings and secrets are kept, and the stack is rebuilt and restarted, so it also works for upgrades. `--reconfigure` asks the questions again (backing up `.env` first, and keeping the secrets).
+
+For automation, pass `--non-interactive` and provide the answers as environment variables. Run `./install.sh --help` for the list. The first admin is created from `ADMIN_EMAIL`, `ADMIN_NAME` and `ADMIN_PASSWORD`; the password is passed via standard input, never on a command line.
+
+Sections 3–4 below describe the same steps done by hand.
+
 ## 3. Configure
 
 ```bash

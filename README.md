@@ -30,16 +30,10 @@ See [`docs/SPEC.md`](docs/SPEC.md) for the full design.
 
 See **[docs/INSTALL.md](docs/INSTALL.md)** for the step-by-step guide (DNS, configuration, first run, single sign-on) and **[docs/OPERATIONS.md](docs/OPERATIONS.md)** for upgrades, backups, monitoring and troubleshooting.
 
-In short:
+In short, after creating the DNS records:
 
 ```bash
-cp .env.example .env   # fill in hostnames, secrets, SMTP relay
-```
-```bash
-docker compose up -d --build
-```
-```bash
-docker compose exec web php artisan dmarc:install
+sudo ./install.sh
 ```
 
 ## Development

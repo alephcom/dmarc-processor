@@ -5,6 +5,27 @@ on:
   pull_request:
 
 jobs:
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck -x install.sh
+      - name: Unattended configuration
+        env:
+          APP_HOST: dmarc.ci-test.example
+          ACME_EMAIL: ops@ci-test.example
+          MAIL_HOST: smtp.ci-test.example
+          MAIL_PASSWORD: 'p@ss $HOME #x \ y'
+        run: ./install.sh --config-only --non-interactive
+      - name: Compose accepts the generated .env
+        run: docker compose config -q
+      - name: Re-run keeps generated secrets
+        run: |
+          before=$(grep '^APP_KEY=' .env)
+          ./install.sh --config-only --non-interactive
+          test "$before" = "$(grep '^APP_KEY=' .env)"
+
   smtp-receiver:
     runs-on: ubuntu-latest
     defaults:

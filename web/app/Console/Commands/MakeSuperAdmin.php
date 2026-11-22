@@ -11,7 +11,7 @@ use function Laravel\Prompts\text;
 
 class MakeSuperAdmin extends Command
 {
-    protected $signature = 'dmarc:make-super-admin {email?} {--name=}';
+    protected $signature = 'dmarc:make-super-admin {email?} {--name=} {--password-stdin : Read the password from standard input (for unattended installs)}';
 
     protected $description = 'Create (or promote) an MSP super-admin user';
 
@@ -33,7 +33,16 @@ class MakeSuperAdmin extends Command
         }
 
         $name = $this->option('name') ?? text('Name', required: true);
-        $pass = password('Password (min 12 characters)', required: true, validate: fn (string $v) => strlen($v) < 12 ? 'Use at least 12 characters.' : null);
+        if ($this->option('password-stdin')) {
+            $pass = rtrim((string) fgets(STDIN), "\r\n");
+            if (strlen($pass) < 12) {
+                $this->error('The password must be at least 12 characters.');
+
+                return self::FAILURE;
+            }
+        } else {
+            $pass = password('Password (min 12 characters)', required: true, validate: fn (string $v) => strlen($v) < 12 ? 'Use at least 12 characters.' : null);
+        }
 
         $user = User::create(['name' => $name, 'email' => $email, 'password' => $pass]);
         $user->forceFill(['is_super_admin' => true, 'email_verified_at' => now()])->save();

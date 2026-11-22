@@ -25,6 +25,14 @@
 
 ## Upgrading
 
+The simplest way:
+
+```bash
+git pull && sudo ./install.sh
+```
+
+It keeps your settings, rebuilds, restarts and re-runs the installation check. By hand:
+
 ```bash
 git pull
 ```
