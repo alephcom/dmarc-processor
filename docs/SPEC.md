@@ -167,7 +167,7 @@ A Filament wizard that the user can leave and resume (progress stored in `domain
 1. **Add domain**
    - Enter the domain; it is validated and checked against the public suffix list
    - Rejected if already registered by another tenant (MSP admin can override)
-2. **Current state scan**
+2. **Current state scan** (runs after the page renders so DNS never blocks the request; rate-limited per domain)
    - Fetch existing `_dmarc`, SPF and common DKIM selectors (`google`, `selector1`, `selector2`, `k1`, `s1`, `default`, `mxvault`, …, plus user-supplied selectors)
    - Show a traffic-light summary with plain-English explanations
 3. **SPF review**
@@ -175,16 +175,19 @@ A Filament wizard that the user can leave and resume (progress stored in `domain
    - Count DNS lookups (warn ≥8, error >10)
    - Flag `+all`/`?all`, duplicate SPF records, deprecated `ptr`, void lookups
 4. **DKIM review**
-   - List found selectors with key type and length (warn on RSA < 1024, suggest 2048)
+   - List found selectors with key type and length (error below 1024-bit RSA, warn below 2048)
+   - Selectors probed: about 30 common provider selectors, plus user-supplied ones, plus any seen in the domain's reports in the last 30 days
    - Offer per-provider guidance links (M365, Google Workspace, common ESPs)
 5. **DMARC record builder**
-   - Generate `v=DMARC1; p=none; rua=mailto:rua-<token>@reports.<msp>; fo=1; adkim=r; aspf=r`
+   - Generate `v=DMARC1; p=none; rua=mailto:rua-<token>@reports.<msp>` (no `fo=1`: it only affects forensic reports, which we don't use; `adkim`/`aspf` default to relaxed)
    - If a DMARC record already exists, *merge*: keep their policy and add our `rua` alongside existing addresses
    - Every tag gets a tooltip explanation
-   - Copy-to-clipboard, plus a provider-specific "how to add a TXT record" panel (Cloudflare, GoDaddy, 123-reg, Route 53, M365 DNS, generic)
+   - Copy-to-clipboard, plus a provider-specific "how to add a TXT record" panel. The DNS host is detected from NS records (Cloudflare, GoDaddy, Route 53, Namecheap, Microsoft 365, Azure, Squarespace, 123 Reg, IONOS; generic instructions otherwise)
 6. **Verify**
-   - "Check now" button, plus automatic re-check every 15 minutes for 48 hours
+   - "Check now" button, a 30-second re-check while the page is open, and a background re-check every 15 minutes for 48 hours (`dmarc:check-dns --pending`)
    - Green ticks once the record is live and contains our `rua`
+   - Also checks the MSP's `*._report._dmarc` authorisation record and flags it as an MSP-side problem if missing
+   - All domains get a full DNS scan daily (`dmarc:check-dns`); results are stored in `dns_checks` for change alerts (M7)
 7. **Waiting for data**
    - Explains that reports arrive in 24–48h
    - Domain status becomes `active` when the first report lands, and the user is notified

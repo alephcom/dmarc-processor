@@ -20,12 +20,12 @@ class DomainInfolist
                         ->state(fn (Domain $record) => $record->ruaAddress())
                         ->copyable()
                         ->fontFamily('mono'),
-                    TextEntry::make('suggested_record')
-                        ->label(fn (Domain $record) => "Starter DMARC record (TXT at _dmarc.{$record->name})")
-                        ->state(fn (Domain $record) => 'v=DMARC1; p=none; rua=mailto:'.$record->ruaAddress().'; fo=1')
-                        ->helperText('The setup wizard (coming next) will check your existing record and merge this for you.')
-                        ->copyable()
-                        ->fontFamily('mono'),
+                    TextEntry::make('dns_verified_at')
+                        ->label('DMARC record')
+                        ->state(fn (Domain $record) => $record->dns_verified_at ? 'Live since '.$record->dns_verified_at->toFormattedDateString() : 'Not verified yet')
+                        ->badge()
+                        ->color(fn (Domain $record) => $record->dns_verified_at ? 'success' : 'warning')
+                        ->helperText(fn (Domain $record) => $record->dns_checked_at ? 'Last checked '.$record->dns_checked_at->diffForHumans() : 'Not checked yet'),
                 ])->columns(1),
             Section::make('Status')->schema([
                 TextEntry::make('status')->badge(),

@@ -21,6 +21,9 @@ class DomainsTable
                     Domain::STATUS_PAUSED => 'gray',
                     default => 'warning',
                 })->formatStateUsing(fn (string $state) => $state === Domain::STATUS_PENDING ? 'Waiting for reports' : ucfirst($state)),
+                TextColumn::make('dns_verified_at')->label('DMARC record')->badge()
+                    ->state(fn (Domain $record) => $record->dns_verified_at ? 'Live' : ($record->dns_checked_at ? 'Not found' : 'Not checked'))
+                    ->color(fn (Domain $record) => $record->dns_verified_at ? 'success' : 'warning'),
                 TextColumn::make('current_policy')->label('Policy')->placeholder('—')->badge()->color('gray'),
                 TextColumn::make('last_report_at')->label('Last report')->since()->placeholder('Never')->sortable(),
             ])

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Dns\Checks\CheckResult;
+use App\Dns\Checks\Issue;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,14 +22,18 @@ class Domain extends Model
     protected $fillable = [
         'tenant_id', 'name', 'rua_token', 'status', 'onboarding_step',
         'current_policy', 'current_pct', 'target_policy', 'dkim_selectors',
-        'first_report_at', 'last_report_at',
+        'first_report_at', 'last_report_at', 'dns_provider',
     ];
+
+    public const ONBOARDING_STEPS = ['overview', 'spf', 'dkim', 'dmarc', 'verify', 'waiting'];
 
     protected function casts(): array
     {
         return [
             'dkim_selectors' => 'array',
             'first_report_at' => 'datetime',
+            'dns_checked_at' => 'datetime',
+            'dns_verified_at' => 'datetime',
             'last_report_at' => 'datetime',
         ];
     }
@@ -70,6 +76,32 @@ class Domain extends Model
     public function acceptsReports(): bool
     {
         return $this->status !== self::STATUS_PAUSED;
+    }
+
+    /**
+     * The most recent stored check of each type.
+     *
+     * @return array<string, CheckResult>
+     */
+    public function latestChecks(): array
+    {
+        $out = [];
+        foreach (['dmarc', 'spf', 'dkim', 'rua_auth'] as $type) {
+            $c = $this->dnsChecks()->where('type', $type)->latest('checked_at')->latest('id')->first();
+            if ($c) {
+                $out[$type] = new CheckResult(
+                    $type, $c->status, $c->raw, $c->parsed ?? [],
+                    array_map(fn (array $i) => Issue::fromArray($i), $c->issues ?? []),
+                );
+            }
+        }
+
+        return $out;
+    }
+
+    public function isOnboarding(): bool
+    {
+        return $this->onboarding_step !== 'done';
     }
 
     public function tenant(): BelongsTo

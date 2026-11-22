@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Support\InitialsAvatarProvider;
 use App\Http\Middleware\EnforceTenantMfa;
 use App\Models\Tenant;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
@@ -31,6 +32,7 @@ class AppPanelProvider extends PanelProvider
             ->default()
             ->login()
             ->profile()
+            ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->tenant(Tenant::class, slugAttribute: 'slug')
             ->tenantMiddleware([EnforceTenantMfa::class], isPersistent: true)
             ->brandName(config('app.name'))

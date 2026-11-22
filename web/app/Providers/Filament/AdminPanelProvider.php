@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Support\InitialsAvatarProvider;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -28,6 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->profile()
+            ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->brandName(config('app.name').' · MSP Admin')
             ->colors(['primary' => Color::Indigo])
             ->multiFactorAuthentication([AppAuthentication::make()->recoverable()], isRequired: true)

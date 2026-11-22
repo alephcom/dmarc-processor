@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->string('rua_token', 16)->unique();
             $table->string('status', 16)->default('pending'); // pending | active | paused
-            $table->string('onboarding_step', 32)->default('scan');
+            $table->string('onboarding_step', 32)->default('overview');
             $table->string('current_policy', 16)->nullable();
             $table->unsignedTinyInteger('current_pct')->nullable();
             $table->string('target_policy', 16)->default('reject');
