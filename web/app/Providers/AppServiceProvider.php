@@ -10,6 +10,7 @@ use App\Dns\SystemResolver;
 use App\Intel\AsnDatabase;
 use App\Intel\MmdbAsnDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -37,6 +38,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Generated links (share links, invitations, emails) always use the public scheme, even if
+        // a request reached the app over the internal plain-HTTP hop.
+        if (str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+            config(['session.secure' => config('session.secure') ?? true]);
+        }
+
         foreach (array_keys(AuditObserver::config()) as $model) {
             $model::observe(AuditObserver::class);
         }

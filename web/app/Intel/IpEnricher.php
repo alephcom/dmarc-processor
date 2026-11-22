@@ -5,10 +5,13 @@ namespace App\Intel;
 use App\Dns\DnsLookupException;
 use App\Dns\Resolver;
 use App\Models\IpIntel;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Looks up reverse DNS, ASN and known-sender identity for source IPs and caches it in ip_intel.
+ *
+ * ip_intel is shared by every tenant, so only signals we verify ourselves are used. Nothing in a
+ * DMARC report counts: reports are unauthenticated, and anyone who knows a published rua address
+ * could otherwise relabel an IP for all tenants (e.g. claim an SPF pass for sendgrid.net).
  */
 class IpEnricher
 {
@@ -28,7 +31,7 @@ class IpEnricher
     {
         [$rdns, $verified] = $this->reverseDns($ip);
         $asn = $this->asnDb->lookup($ip);
-        $match = $this->identifier->identify($rdns, $verified, $asn?->asn, $this->passingSpfDomains($ip));
+        $match = $this->identifier->identify($rdns, $verified, $asn?->asn);
 
         return IpIntel::updateOrCreate(['ip' => $ip], [
             'rdns' => $rdns,
@@ -57,30 +60,5 @@ class IpEnricher
         } catch (DnsLookupException) {
             return [null, false];
         }
-    }
-
-    /**
-     * Envelope domains whose SPF check passed for recent mail from this IP, across all domains.
-     *
-     * Only SPF is used: it is bound to the sending IP. A DKIM pass is not evidence about the
-     * IP, because signatures survive forwarding (a mailing list relaying SendGrid mail would
-     * otherwise be labelled SendGrid).
-     *
-     * @return list<string>
-     */
-    private function passingSpfDomains(string $ip): array
-    {
-        $domains = [];
-        DB::table('report_records')->where('source_ip', $ip)->orderByDesc('id')->limit(200)
-            ->pluck('spf_results')
-            ->each(function ($json) use (&$domains) {
-                foreach (json_decode((string) $json, true) ?: [] as $r) {
-                    if (($r['result'] ?? '') === 'pass' && ! empty($r['domain'])) {
-                        $domains[] = strtolower($r['domain']);
-                    }
-                }
-            });
-
-        return $domains;
     }
 }

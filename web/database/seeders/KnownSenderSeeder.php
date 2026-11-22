@@ -10,8 +10,9 @@ use Illuminate\Database\Seeder;
  *
  * Matching (see App\Intel\SenderIdentifier):
  *  - rdns_suffixes: forward-confirmed reverse DNS ends with one of these
- *  - dkim_domains / spf_includes: a DKIM signature or SPF check that PASSED used one of these domains
  *  - asns: only networks dedicated to the provider (never shared clouds like AWS/Azure/GCP)
+ *  - spf_includes / dkim_domains: reference only (shown to admins); never used for matching,
+ *    because they would have to come from unauthenticated report contents
  * All domain lists match on suffix (sendgrid.net matches em123.sendgrid.net).
  */
 class KnownSenderSeeder extends Seeder

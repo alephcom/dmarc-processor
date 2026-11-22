@@ -38,7 +38,14 @@ warn() { printf '  %s!%s %s\n' "$YELLOW" "$RESET" "$*"; }
 fail() { printf '  %s✗%s %s\n' "$RED" "$RESET" "$*" >&2; }
 die()  { fail "$*"; exit 1; }
 
-trap 'fail "Installer stopped at line ${LINENO}. Nothing already running was removed; fix the problem and re-run."' ERR
+on_error() {
+  local status=$? line=$1 cmd=$2
+  trap - ERR   # report once, not once per function level
+  fail "Installer stopped (exit ${status}) at line ${line}: ${cmd}"
+  fail "Nothing already running was removed; fix the problem and re-run."
+  exit "$status"
+}
+trap 'on_error "${LINENO}" "${BASH_COMMAND}"' ERR
 
 usage() {
   sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'
@@ -318,7 +325,8 @@ server_ips() {
   hostname -I 2>/dev/null | tr ' ' '\n' | grep -vE '^(127\.|::1|fe80:|172\.(1[6-9]|2[0-9]|3[01])\.|$)' || true
 }
 
-resolve() { getent ahosts "$1" 2>/dev/null | awk '{print $1}' | sort -u; }
+# Prints the addresses a name resolves to; prints nothing (and succeeds) when it doesn't resolve.
+resolve() { { getent ahosts "$1" 2>/dev/null || true; } | awk '{print $1}' | sort -u; }
 
 check_dns() {
   step "DNS"
@@ -381,7 +389,7 @@ post_install() {
   fi
 
   local admins
-  admins="$(compose exec -T web php artisan tinker --execute 'echo App\Models\User::where("is_super_admin", true)->count();' 2>/dev/null | tr -dc '0-9')"
+  admins="$({ compose exec -T web php artisan tinker --execute 'echo App\Models\User::where("is_super_admin", true)->count();' 2>/dev/null || true; } | tr -dc '0-9')"
   if [[ "${admins:-0}" -eq 0 ]]; then
     if [[ $INTERACTIVE -eq 1 ]]; then
       echo "  Create the first MSP admin (you'll set up two-factor authentication at first sign-in):"
@@ -437,4 +445,7 @@ main() {
   summary
 }
 
-main "$@"
+# Run only when executed, so tests can source the script and call individual functions.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

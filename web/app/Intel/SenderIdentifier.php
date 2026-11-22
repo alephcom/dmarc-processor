@@ -8,23 +8,19 @@ use Illuminate\Support\Collection;
 /**
  * Decides which known sender (if any) an IP belongs to.
  *
- * Evidence, strongest first:
+ * Evidence (both verified by us in live DNS / the IP database, never taken from report contents):
  *  1. rdns  - forward-confirmed reverse DNS ends with a sender's suffix
- *  2. spf   - SPF *passed* for an envelope domain belonging to the sender. SPF is bound to the
- *             sending IP; DKIM is deliberately not used because signatures survive forwarding.
- *  3. asn   - the IP is in a network dedicated to the sender
+ *  2. asn   - the IP is in a network dedicated to the sender
  * Unconfirmed rDNS is never used: anyone can set the PTR of their own IP to "mail.google.com".
+ * Report auth_results (SPF/DKIM domains) are never used: reports are unauthenticated input.
  */
 class SenderIdentifier
 {
     /** @var Collection<int, KnownSender>|null */
     private ?Collection $senders = null;
 
-    /**
-     * @param  list<string>  $passingSpfDomains  envelope domains with a passing SPF result on mail from this IP
-     * @return array{0: KnownSender, 1: string}|null [sender, reason]
-     */
-    public function identify(?string $rdns, bool $rdnsVerified, ?int $asn, array $passingSpfDomains): ?array
+    /** @return array{0: KnownSender, 1: string}|null [sender, reason] */
+    public function identify(?string $rdns, bool $rdnsVerified, ?int $asn): ?array
     {
         $senders = $this->senders();
 
@@ -34,21 +30,6 @@ class SenderIdentifier
                     return [$s, 'rdns'];
                 }
             }
-        }
-
-        // Count which sender the passing SPF domains point at; most evidence wins.
-        $votes = [];
-        foreach ($passingSpfDomains as $d) {
-            foreach ($senders as $s) {
-                if (self::matchesAny($d, [...($s->dkim_domains ?? []), ...($s->spf_includes ?? [])])) {
-                    $votes[$s->id] = ($votes[$s->id] ?? 0) + 1;
-                }
-            }
-        }
-        if ($votes !== []) {
-            arsort($votes);
-
-            return [$senders->firstWhere('id', array_key_first($votes)), 'spf'];
         }
 
         if ($asn !== null) {

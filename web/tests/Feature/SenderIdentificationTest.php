@@ -81,22 +81,22 @@ class SenderIdentificationTest extends TestCase
         $this->assertNull($intel->known_sender_id);
     }
 
-    public function test_passing_spf_identifies_sender_but_dkim_does_not(): void
+    public function test_report_contents_never_identify_an_ip(): void
     {
-        $d = Domain::factory()->create(['name' => 'example.com']);
-        // A forwarder relaying Mailchimp mail: the DKIM signature survived, SPF did not pass.
-        $this->record($d, '203.0.113.10', spf: [['domain' => 'forwarder.example.net', 'result' => 'pass']], dkim: [['domain' => 'mcsv.net', 'selector' => 'k1', 'result' => 'pass']]);
-        $this->assertNull(app(IpEnricher::class)->enrich('203.0.113.10')->known_sender_id);
+        // Anyone who knows a published rua address can send a forged report claiming SPF/DKIM
+        // passes for a provider. That must not relabel the IP for every tenant.
+        $victim = Domain::factory()->create(['name' => 'victim.test']);
+        $attacker = Domain::factory()->create(['name' => 'attacker.test']);
+        $this->record($victim, '203.0.113.20');
+        DomainSource::where('domain_id', $victim->id)->update(['classification' => 'unknown']);
+        $this->record($attacker, '203.0.113.20',
+            spf: [['domain' => 'bounces.sendgrid.net', 'result' => 'pass']],
+            dkim: [['domain' => 'sendgrid.net', 'selector' => 's1', 'result' => 'pass']]);
 
-        // Mailchimp's own server: SPF passed for its bounce domain.
-        $this->record($d, '203.0.113.20', spf: [['domain' => 'mail181.suw91.mcsv.net', 'result' => 'pass']]);
-        $intel = app(IpEnricher::class)->enrich('203.0.113.20');
-        $this->assertSame('Mailchimp', $intel->knownSender->name);
-        $this->assertSame('spf', $intel->match_reason);
+        EnrichSourceIps::dispatchSync(['203.0.113.20'], force: true);
 
-        // A failing SPF result is not evidence.
-        $this->record($d, '203.0.113.30', spf: [['domain' => 'sendgrid.net', 'result' => 'fail']]);
-        $this->assertNull(app(IpEnricher::class)->enrich('203.0.113.30')->known_sender_id);
+        $this->assertNull(IpIntel::firstWhere('ip', '203.0.113.20')->known_sender_id);
+        $this->assertSame('ip:203.0.113.20', DailySourceStat::where('domain_id', $victim->id)->value('source_key'));
     }
 
     public function test_dedicated_asn_identifies_sender(): void

@@ -231,11 +231,10 @@ Charts show messages passing vs failing DMARC as stacked bars (daily; weekly for
 - **Source drill-down:** IPs, rDNS, header_from/envelope_from pairs, DKIM selectors seen, failing reasons, and suggested fixes (e.g. "Add `include:sendgrid.net` to SPF", "Enable DKIM signing in Mailchimp")
 
 ### Sender identification
-- Each source IP is enriched once (refreshed every 30 days) with reverse DNS, ASN/organisation (offline DB-IP or IPinfo Lite database, `dmarc:update-ip-db`) and a known-sender match. Evidence, strongest first:
+- Each source IP is enriched once (refreshed every 30 days) with reverse DNS, ASN/organisation (offline DB-IP or IPinfo Lite database, `dmarc:update-ip-db`) and a known-sender match. `ip_intel` is shared by all tenants, so only signals we verify ourselves count:
   1. Forward-confirmed reverse DNS ending in a sender's suffix. Unconfirmed rDNS is ignored: anyone can set their own PTR to `mail.google.com`.
-  2. A *passing* SPF result for one of the sender's envelope domains. SPF is bound to the sending IP.
-  3. A network (ASN) dedicated to the sender. Shared clouds are never listed.
-  DKIM passes are deliberately not used to identify IPs: signatures survive forwarding, so a mailing list relaying SendGrid mail would be mislabelled SendGrid.
+  2. A network (ASN) dedicated to the sender. Shared clouds are never listed.
+  Report contents (`auth_results` SPF/DKIM domains) are never used: reports are unauthenticated, and anyone who knows a published `rua` address could otherwise relabel an IP for every tenant (security review finding). The catalogue's SPF/DKIM domain lists are reference information only.
 - Sources are grouped as identified service → network (ASN) → single IP. Grouping keys live on `daily_source_stats.source_key` and are updated when identification improves; classifications carry over.
 - The catalogue ships with about 30 providers and is editable by MSP admins (Admin → Known senders); saving re-identifies all IPs (`dmarc:reidentify-sources`).
 - Users classify each source as `legit` / `unknown` / `suspicious`; unclassified sources default to `unknown`. "Senders to review" = failing DMARC and not marked legitimate.
@@ -311,7 +310,7 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
   - Start and end are audited; everything done meanwhile is recorded with both the customer user (actor) and the super-admin (impersonator).
   - The session ID is regenerated on each switch, and the session password hash is updated so the session-integrity middleware doesn't log the admin out.
 - **Users (Admin → Users):** edit name/email, toggle super-admin (not on yourself), reset a lost authenticator, delete (not yourself). People join via invitations; super-admins via `dmarc:make-super-admin`.
-- **2FA:** TOTP (Filament's built-in), enforceable per tenant and mandatory for super-admins
+- **2FA:** TOTP (Filament's built-in), enforceable per tenant and mandatory for super-admins on *every* surface that honours super-admin rights: `/admin`, the tenant panel (super-admins without TOTP are sent to set it up), printable reports and Horizon. Report pages also apply the tenant's "require 2FA" setting (SSO sessions exempt).
 - **SSO:** Microsoft Entra ID and Google via Socialite, tenant panel only (super-admins are refused and must use password + TOTP)
   - Configured per tenant by MSP admins: email domains, allowed Entra directory (tenant) IDs, role for new users (viewer/admin)
   - Accepted only when the IdP proves the organisation: Google requires `email_verified` and a Workspace `hd` equal to the email domain; Microsoft requires the `tid` from the signature-validated ID token to be allow-listed (the unverified Entra `mail` attribute is never used; the UPN is)
@@ -336,6 +335,7 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
 - XML parsing is hardened (no external entities, size/depth limits)
 - Secrets are stored encrypted: notification channel config (webhook URLs and secrets, email recipients), SSO client secrets, TOTP seeds
 - Tenant-supplied webhook URLs can't reach internal services (see Notification channels)
+- Behind Caddy: the app trusts `X-Forwarded-Proto/For/Port` from the proxy hop (the web container isn't published; Caddy discards client-supplied forwarding headers) but never `X-Forwarded-Host`. Generated URLs are forced to `https` when `APP_URL` is https, and session cookies are `Secure`.
 - Rate limiting on login and on the receiver
 - Every config change is recorded in the audit log
 

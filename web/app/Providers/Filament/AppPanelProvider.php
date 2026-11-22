@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Support\InitialsAvatarProvider;
 use App\Http\Middleware\EnforceTenantMfa;
+use App\Http\Middleware\RequireSuperAdminTwoFactor;
 use App\Models\Tenant;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
@@ -58,6 +59,10 @@ class AppPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->authMiddleware([Authenticate::class]);
+            ->authMiddleware([
+                Authenticate::class,
+                // Super-admins have owner rights in every tenant: two-factor is mandatory here too.
+                RequireSuperAdminTwoFactor::class,
+            ]);
     }
 }

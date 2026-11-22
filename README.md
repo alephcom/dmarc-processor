@@ -4,6 +4,8 @@ Self-hosted, multi-tenant DMARC analyzer for MSPs. Customers' DMARC aggregate re
 
 See [`docs/SPEC.md`](docs/SPEC.md) for the full design.
 
+> **Built with Claude.** This project was designed and written with [Claude Code](https://claude.com/claude-code), Anthropic's AI coding agent, working from requirements set out by the project owner. The code, tests, documentation and installer were produced in that collaboration and reviewed through automated tests and CI. As with any code, review it before running it in production.
+
 ## Repository layout
 
 | Path | What |

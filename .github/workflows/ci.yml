@@ -20,6 +20,12 @@ jobs:
         run: ./install.sh --config-only --non-interactive
       - name: Compose accepts the generated .env
         run: docker compose config -q
+      - name: DNS check warns (doesn't abort) when hostnames don't resolve yet
+        run: |
+          out=$(bash -c 'source ./install.sh; INTERACTIVE=0; check_dns; echo REACHED_END' 2>&1)
+          echo "$out"
+          grep -q 'does not resolve yet' <<<"$out"
+          grep -q REACHED_END <<<"$out"
       - name: Re-run keeps generated secrets
         run: |
           before=$(grep '^APP_KEY=' .env)

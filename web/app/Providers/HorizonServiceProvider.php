@@ -28,7 +28,8 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     protected function gate(): void
     {
         Gate::define('viewHorizon', function ($user = null) {
-            return (bool) $user?->is_super_admin;
+            // Super-admins only, and only once they have two-factor authentication set up.
+            return (bool) $user?->is_super_admin && filled($user->getAppAuthenticationSecret());
         });
     }
 }
