@@ -66,7 +66,7 @@ Edit `.env`:
   openssl rand -hex 32
   ```
 - `MAIL_*`: your SMTP relay
-- Optional: `IPINFO_TOKEN` (better sender identification), `DMARC_BRAND_*` (report branding), SSO keys (section 6)
+- Optional: `IPINFO_TOKEN` (better sender identification), `DMARC_BRAND_*` (report branding), SSO keys (section 6), `PUBLIC_SITE_*` (section 7)
 
 Generate the application key and paste it into `APP_KEY`:
 
@@ -141,6 +141,26 @@ The first time a customer's user signs in, they (or their admin) consent to the 
    docker compose up -d
    ```
 
-## 7. Next
+## 7. Public home page and free accounts (optional)
+
+By default `/` sends visitors straight to the sign-in page. To offer free hosted accounts, set in `.env`:
+
+```
+PUBLIC_SITE_ENABLED=true
+# Optional, shown with these defaults:
+PUBLIC_SITE_FREE_MONTHLY_EMAILS=10000
+PUBLIC_SITE_REVIEW_HOURS=48
+PUBLIC_SITE_REPO_URL=https://github.com/alephcom/dmarc-processor
+```
+
+then run:
+
+```bash
+docker compose up -d
+```
+
+`/` then shows a public page explaining the service, with a **Request a free account** form. Each request appears under **Admin → Account requests** (super-admins also get an in-app notification and an email). **Approve** creates the organisation and emails the requester an invitation to join as owner; **Decline** can email them a short note pointing to the self-hosting instructions.
+
+## 8. Next
 
 See [OPERATIONS.md](OPERATIONS.md) for upgrades, backups, monitoring and troubleshooting.
