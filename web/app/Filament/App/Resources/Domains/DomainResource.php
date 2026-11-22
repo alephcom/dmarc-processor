@@ -3,6 +3,7 @@
 namespace App\Filament\App\Resources\Domains;
 
 use App\Filament\App\Resources\Domains\Pages\CreateDomain;
+use App\Filament\App\Resources\Domains\Pages\DomainReports;
 use App\Filament\App\Resources\Domains\Pages\EditDomain;
 use App\Filament\App\Resources\Domains\Pages\ListDomains;
 use App\Filament\App\Resources\Domains\Pages\SetupDomain;
@@ -55,6 +56,7 @@ class DomainResource extends Resource
             'view' => ViewDomain::route('/{record}'),
             'edit' => EditDomain::route('/{record}/edit'),
             'setup' => SetupDomain::route('/{record}/setup'),
+            'reports' => DomainReports::route('/{record}/reports'),
         ];
     }
 }

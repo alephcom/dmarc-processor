@@ -28,6 +28,11 @@ class Report extends Model
         return $this->belongsTo(Domain::class);
     }
 
+    public function inboundMessage(): BelongsTo
+    {
+        return $this->belongsTo(InboundMessage::class);
+    }
+
     public function records(): HasMany
     {
         return $this->hasMany(ReportRecord::class);
