@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Intel\SourceKey;
+use App\Models\IpIntel;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -36,10 +38,12 @@ class StatsAggregator
 
             DB::table('daily_source_stats')->where('domain_id', $domainId)->where('day', $day)->delete();
             $bySource = (clone $base)->selectRaw('source_ip, '.$this->sums())->groupBy('source_ip')->get();
+            $intel = IpIntel::whereIn('ip', $bySource->pluck('source_ip'))->get()->keyBy('ip');
             $rows = $bySource->map(fn ($r) => [
                 'domain_id' => $domainId,
                 'day' => $day,
                 'source_ip' => $r->source_ip,
+                'source_key' => SourceKey::for($r->source_ip, $intel->get($r->source_ip)),
                 'total' => (int) $r->total,
                 'dmarc_pass' => (int) $r->dmarc_pass,
                 'dkim_aligned' => (int) $r->dkim_aligned,

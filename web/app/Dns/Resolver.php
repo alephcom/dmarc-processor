@@ -22,4 +22,10 @@ interface Resolver
 
     /** Whether $name has any A or AAAA record. */
     public function hasAddress(string $name): bool;
+
+    /** @return list<string> A and AAAA addresses of $name */
+    public function addresses(string $name): array;
+
+    /** Reverse DNS (PTR) hostname for an IP address, lower-cased, or null. */
+    public function ptr(string $ip): ?string;
 }

@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Dns\ArrayResolver;
 use App\Dns\Resolver;
 use App\Dns\SystemResolver;
+use App\Intel\AsnDatabase;
+use App\Intel\MmdbAsnDatabase;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
 
             return new SystemResolver;
         });
+
+        $this->app->singleton(AsnDatabase::class, fn () => new MmdbAsnDatabase(config('dmarc.asn_db_path')));
     }
 
     /**

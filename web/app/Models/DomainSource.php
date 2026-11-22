@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DomainSource extends Model
 {
-    protected $fillable = ['domain_id', 'source_key', 'classification', 'notes', 'first_seen_at'];
+    protected $fillable = ['domain_id', 'source_key', 'label', 'classification', 'notes', 'first_seen_at'];
 
     protected function casts(): array
     {

@@ -6,6 +6,8 @@ use App\Dmarc\AggregateReportParser;
 use App\Dmarc\Data\AggregateReport;
 use App\Dmarc\ReportExtractor;
 use App\Dmarc\ReportParseException;
+use App\Intel\SourceRegistry;
+use App\Jobs\EnrichSourceIps;
 use App\Models\Domain;
 use App\Models\InboundMessage;
 use App\Models\Report;
@@ -22,7 +24,11 @@ class ReportImporter
         private readonly ReportExtractor $extractor,
         private readonly AggregateReportParser $parser,
         private readonly StatsAggregator $stats,
+        private readonly SourceRegistry $registry,
     ) {}
+
+    /** @var list<int> */
+    private array $importedReportIds = [];
 
     public function import(InboundMessage $msg): void
     {
@@ -55,6 +61,7 @@ class ReportImporter
         }
 
         $imported = 0;
+        $this->importedReportIds = [];
         $errors = [];
         $quarantined = false;
         $touchedDays = [];
@@ -82,6 +89,13 @@ class ReportImporter
 
         foreach (array_keys($touchedDays) as $day) {
             $this->stats->refreshDay($domain->id, $day);
+        }
+        if ($touchedDays !== []) {
+            $this->registry->sync($domain->id);
+            $ips = DB::table('report_records')->whereIn('report_id', $this->importedReportIds)->distinct()->pluck('source_ip')->all();
+            foreach (array_chunk($ips, 100) as $chunk) {
+                EnrichSourceIps::dispatch($chunk);
+            }
         }
 
         if ($imported > 0) {
@@ -122,6 +136,7 @@ class ReportImporter
                     'errors' => $r->errors ?: null,
                     'message_count' => $r->totalMessages(),
                 ]);
+                $this->importedReportIds[] = $report->id;
 
                 $rows = [];
                 foreach ($r->records as $rec) {

@@ -208,6 +208,7 @@ The card shows the exact new record to publish and the evidence behind the sugge
 ## 7. Monitoring
 
 ### Dashboards
+Charts show messages passing vs failing DMARC as stacked bars (daily; weekly for the 12-month view). Colours are a validated colourblind-safe blue/orange pair, not green/red. Periods: 7, 30, 90 days and 12 months (domain page, kept in the URL).
 - **MSP overview**
   - All tenants/domains with health score
   - Current policy vs target
@@ -223,8 +224,16 @@ The card shows the exact new record to publish and the evidence behind the sugge
 - **Source drill-down:** IPs, rDNS, header_from/envelope_from pairs, DKIM selectors seen, failing reasons, and suggested fixes (e.g. "Add `include:sendgrid.net` to SPF", "Enable DKIM signing in Mailchimp")
 
 ### Sender identification
-- Known-sender matching by ASN, rDNS suffix and SPF include domain; ships with a seed list of about 50 common providers
-- Users classify each source as `legit` / `unknown` / `suspicious`; unclassified sources default to `unknown`
+- Each source IP is enriched once (refreshed every 30 days) with reverse DNS, ASN/organisation (offline DB-IP or IPinfo Lite database, `dmarc:update-ip-db`) and a known-sender match. Evidence, strongest first:
+  1. Forward-confirmed reverse DNS ending in a sender's suffix. Unconfirmed rDNS is ignored: anyone can set their own PTR to `mail.google.com`.
+  2. A *passing* SPF result for one of the sender's envelope domains. SPF is bound to the sending IP.
+  3. A network (ASN) dedicated to the sender. Shared clouds are never listed.
+  DKIM passes are deliberately not used to identify IPs: signatures survive forwarding, so a mailing list relaying SendGrid mail would be mislabelled SendGrid.
+- Sources are grouped as identified service → network (ASN) → single IP. Grouping keys live on `daily_source_stats.source_key` and are updated when identification improves; classifications carry over.
+- The catalogue ships with about 30 providers and is editable by MSP admins (Admin → Known senders); saving re-identifies all IPs (`dmarc:reidentify-sources`).
+- Users classify each source as `legit` / `unknown` / `suspicious`; unclassified sources default to `unknown`. "Senders to review" = failing DMARC and not marked legitimate.
+- Each source has a details panel: its servers, DKIM signatures and SPF results seen, and plain-English advice (e.g. "SendGrid signs with its own domain; set up custom DKIM").
+- Attribution: DB-IP's free database is CC BY 4.0; the senders table credits it when it is in use.
 
 ### Alerts (defaults; tenants can tune thresholds)
 | Alert | Trigger |

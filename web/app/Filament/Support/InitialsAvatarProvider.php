@@ -22,7 +22,9 @@ class InitialsAvatarProvider implements AvatarProvider
             ? Filament::getUserName($record)
             : (string) ($record->getAttribute('name') ?? '?');
 
-        $words = preg_split('/\s+/', trim($name)) ?: [];
+        // Letters and digits only, so "Acme (demo)" gives "AD" rather than "A(".
+        $words = preg_split('/\s+/', trim(preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $name))) ?: [];
+        $words = array_values(array_filter($words, fn ($w) => $w !== ''));
         $initials = mb_strtoupper(mb_substr($words[0] ?? '?', 0, 1).mb_substr(count($words) > 1 ? end($words) : '', 0, 1));
         $colour = self::COLOURS[crc32($name) % count(self::COLOURS)];
 

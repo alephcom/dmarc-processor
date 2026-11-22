@@ -12,8 +12,9 @@ class DomainInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Reporting')
+            Section::make('Reporting & DNS')
                 ->description('Mailbox providers send daily DMARC reports to this address.')
+                ->collapsible()
                 ->schema([
                     TextEntry::make('rua_address')
                         ->label('Reporting address')
@@ -27,7 +28,7 @@ class DomainInfolist
                         ->color(fn (Domain $record) => $record->dns_verified_at ? 'success' : 'warning')
                         ->helperText(fn (Domain $record) => $record->dns_checked_at ? 'Last checked '.$record->dns_checked_at->diffForHumans() : 'Not checked yet'),
                 ])->columns(1),
-            Section::make('Status')->schema([
+            Section::make('Status')->collapsible()->schema([
                 TextEntry::make('status')->badge(),
                 TextEntry::make('current_policy')->label('Published policy')->placeholder('Not checked yet'),
                 TextEntry::make('target_policy')->label('Target policy'),

@@ -22,7 +22,7 @@ See [`docs/SPEC.md`](docs/SPEC.md) for the full design.
 | M3 Parser, ingest, dedupe, rollups, retention | ✅ |
 | M4 Tenancy, users/roles, invitations, 2FA, impersonation, audit | 🟡 tenancy, roles, 2FA done; invitations/impersonation/audit to do |
 | M5 Setup wizard (DNS scanner, record builder, verify) | ✅ |
-| M6 Dashboards, sender identification | ⏳ |
+| M6 Dashboards, sender identification | ✅ |
 | M7 Alerts, channels, digests, policy guide | ⏳ |
 | M8 Printable reports, SSO, install command, docs | ⏳ |
 
@@ -48,9 +48,16 @@ See [`docs/SPEC.md`](docs/SPEC.md) for the full design.
    ```bash
    docker compose exec web php artisan dmarc:make-super-admin you@example-msp.com
    ```
-5. Sign in at `https://dmarc.example-msp.com/admin`, set up 2FA, create a tenant, then add domains in `/app`.
+5. Download the IP database (also refreshed weekly by the scheduler):
+   ```bash
+   docker compose exec web php artisan dmarc:update-ip-db
+   ```
+   Uses DB-IP's free ASN Lite database by default. Set `IPINFO_TOKEN` (free account at ipinfo.io) to use IPinfo Lite instead.
+6. Sign in at `https://dmarc.example-msp.com/admin`, set up 2FA, create a tenant, then add domains in `/app`.
 
 ## Development
+
+To explore the dashboards locally, run `php artisan dmarc:demo` (only works with `APP_ENV=local`) and sign in at `/app` as `demo@example.com` / `demo-password-123`.
 
 To try the setup wizard without real DNS, set `APP_ENV=local` and point `DMARC_FAKE_DNS_ZONE` at a JSON zone file (format in `web/app/Dns/ArrayResolver.php`). This is ignored outside the local environment.
 

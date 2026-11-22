@@ -17,6 +17,14 @@ return [
     'raw_disk' => env('DMARC_RAW_DISK', 'local'),
     'raw_prefix' => 'inbound',
 
+    // Offline IP-to-ASN database (MaxMind DB format). Downloaded by `dmarc:update-ip-db`.
+    'asn_db_path' => env('DMARC_ASN_DB', storage_path('app/ipdb/asn.mmdb')),
+    // With a (free) IPinfo token we download IPinfo Lite; otherwise DB-IP's free ASN Lite database.
+    'ipinfo_token' => env('IPINFO_TOKEN'),
+
+    // How long cached IP intelligence (rDNS, ASN, sender match) stays fresh.
+    'ip_intel_ttl_days' => 30,
+
     // Default retention for raw reports/records when a tenant doesn't override it.
     'default_retention_days' => 395,
 ];

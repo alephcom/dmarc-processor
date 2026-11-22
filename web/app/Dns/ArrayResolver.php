@@ -5,7 +5,8 @@ namespace App\Dns;
 /**
  * In-memory resolver for tests and local development.
  *
- * Keys are lower-case names; values are ['TXT' => [...], 'NS' => [...], 'MX' => [...], 'A' => true].
+ * Keys are lower-case names; values are ['TXT' => [...], 'NS' => [...], 'MX' => [...], 'A' => true|[ips], 'PTR' => 'host'].
+ * PTR entries live under the reverse name (e.g. 1.2.0.192.in-addr.arpa); see ReverseName.
  * Set a name to 'SERVFAIL' to simulate a resolver failure.
  */
 class ArrayResolver implements Resolver
@@ -41,6 +42,21 @@ class ArrayResolver implements Resolver
     public function hasAddress(string $name): bool
     {
         return (bool) ($this->get($name, 'A') ?? false);
+    }
+
+    public function addresses(string $name): array
+    {
+        $v = $this->get($name, 'A');
+
+        return is_array($v) ? array_values($v) : [];
+    }
+
+    public function ptr(string $ip): ?string
+    {
+        $name = ReverseName::for($ip);
+        $v = $name === null ? null : $this->get($name, 'PTR');
+
+        return is_string($v) ? strtolower($v) : null;
     }
 
     private function get(string $name, string $type): mixed

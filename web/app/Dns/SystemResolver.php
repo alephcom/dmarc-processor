@@ -41,6 +41,38 @@ class SystemResolver implements Resolver
         return $this->query($name, DNS_A) !== [] || $this->query($name, DNS_AAAA) !== [];
     }
 
+    public function addresses(string $name): array
+    {
+        $out = [];
+        foreach ($this->query($name, DNS_A) as $r) {
+            if (isset($r['ip'])) {
+                $out[] = $r['ip'];
+            }
+        }
+        foreach ($this->query($name, DNS_AAAA) as $r) {
+            if (isset($r['ipv6'])) {
+                $out[] = inet_ntop(inet_pton($r['ipv6']));
+            }
+        }
+
+        return $out;
+    }
+
+    public function ptr(string $ip): ?string
+    {
+        $name = ReverseName::for($ip);
+        if ($name === null) {
+            return null;
+        }
+        foreach ($this->query($name, DNS_PTR) as $r) {
+            if (! empty($r['target'])) {
+                return strtolower(rtrim($r['target'], '.'));
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<array<string, mixed>> */
     private function query(string $name, int $type): array
     {

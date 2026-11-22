@@ -6,3 +6,5 @@ Schedule::command('dmarc:prune')->dailyAt('03:17')->onOneServer()->withoutOverla
 Schedule::command('dmarc:check-dns --pending')->everyFifteenMinutes()->onOneServer()->withoutOverlapping();
 Schedule::command('dmarc:check-dns')->dailyAt('04:43')->onOneServer()->withoutOverlapping();
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
+Schedule::command('dmarc:update-ip-db')->weeklyOn(0, '05:21')->onOneServer();
+Schedule::command('dmarc:update-ip-db --if-missing')->hourly()->onOneServer();
