@@ -1,0 +1,127 @@
+name: dmarc
+
+x-app: &app
+  build: ./web
+  image: dmarc-processor/web:latest
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    DB_CONNECTION: mariadb
+    DB_HOST: mariadb
+    REDIS_HOST: redis
+    QUEUE_CONNECTION: redis
+    CACHE_STORE: redis
+    SESSION_DRIVER: redis
+  volumes:
+    - app_storage:/var/www/html/storage/app
+  depends_on:
+    mariadb: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  networks: [internal]
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      APP_HOST: ${APP_HOST:?set APP_HOST in .env}
+      MX_HOSTNAME: ${MX_HOSTNAME:?set MX_HOSTNAME in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [internal]
+
+  web:
+    <<: *app
+    environment:
+      DB_CONNECTION: mariadb
+      DB_HOST: mariadb
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      AUTORUN_ENABLED: "true"        # run migrations and cache config on start
+      AUTORUN_LARAVEL_STORAGE_LINK: "false"
+    healthcheck:
+      test: ["CMD", "healthcheck-fpm"]
+      interval: 30s
+
+  worker:
+    <<: *app
+    command: ["php", "/var/www/html/artisan", "horizon"]
+    stop_signal: SIGTERM
+    healthcheck:
+      test: ["CMD", "healthcheck-horizon"]
+      interval: 30s
+
+  scheduler:
+    <<: *app
+    command: ["php", "/var/www/html/artisan", "schedule:work"]
+    stop_signal: SIGTERM
+    healthcheck:
+      test: ["CMD", "healthcheck-schedule"]
+      interval: 30s
+
+  smtp-receiver:
+    build: ./smtp-receiver
+    image: dmarc-processor/smtp-receiver:latest
+    restart: unless-stopped
+    # Root only so it can read Caddy's certificate files (0600, owned by root); all capabilities dropped.
+    user: "0:0"
+    cap_drop: [ALL]
+    read_only: true
+    ports: ["25:2525"]
+    environment:
+      REPORTS_DOMAIN: ${REPORTS_DOMAIN:?set REPORTS_DOMAIN in .env}
+      SMTP_HOSTNAME: ${MX_HOSTNAME}
+      APP_INTERNAL_URL: http://web:8080
+      INGEST_HMAC_SECRET: ${INGEST_HMAC_SECRET:?set INGEST_HMAC_SECRET in .env}
+      # Caddy stores certificates in its data volume; it obtains this one because MX_HOSTNAME is a site in the Caddyfile.
+      TLS_CERT_FILE: /caddy/caddy/certificates/acme-v02.api.letsencrypt.org-directory/${MX_HOSTNAME}/${MX_HOSTNAME}.crt
+      TLS_KEY_FILE: /caddy/caddy/certificates/acme-v02.api.letsencrypt.org-directory/${MX_HOSTNAME}/${MX_HOSTNAME}.key
+    volumes:
+      - smtp_spool:/spool
+      - caddy_data:/caddy:ro
+    depends_on: [web, caddy]
+    networks: [internal]
+
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-dmarc}
+      MARIADB_USER: ${DB_USERNAME:-dmarc}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      retries: 10
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+    networks: [internal]
+
+volumes:
+  app_storage:
+  caddy_data:
+  caddy_config:
+  smtp_spool:
+  mariadb_data:
+  redis_data:
+
+networks:
+  internal:

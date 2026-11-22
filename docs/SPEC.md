@@ -58,15 +58,15 @@ Deployment: a single `docker-compose.yml` on a Linux VPS. The same app image is 
 ### Stack
 | Concern | Choice |
 |---|---|
-| Web/backend | PHP 8.3+, Laravel 11+ |
-| UI | Filament (panels, tables, forms, wizard, charts) + Livewire |
+| Web/backend | PHP 8.3+, Laravel 13 |
+| UI | Filament 5 (panels, tables, forms, wizard, charts, built-in TOTP 2FA) + Livewire |
 | Queue | Redis + Laravel Horizon |
 | DB | MariaDB 11 |
 | Inbound mail | Custom Go binary (`emersion/go-smtp`) |
 | TLS | Caddy (automatic Let's Encrypt) |
 | Reports | Printable HTML pages (print stylesheet) |
 | IP intel | IPinfo Lite / DB-IP ASN (offline, refreshed monthly) + rDNS + built-in known-sender list |
-| Auth extras | TOTP 2FA; Socialite for Microsoft Entra ID & Google SSO |
+| Auth extras | Filament's built-in TOTP 2FA; Socialite for Microsoft Entra ID & Google SSO |
 
 ---
 
@@ -114,7 +114,9 @@ A receive-only SMTP server. It does not relay mail, deliver it locally or send a
    - Validate against the RFC 7489 aggregate schema, tolerating common real-world deviations (e.g. Microsoft/Yahoo quirks)
    - Deduplicate on `(reporter_org, report_id, policy_domain)`
    - **Domain match:** the report's `policy_published/domain` must equal the token's domain, or be a subdomain of it. Otherwise the message is quarantined for admin review. This blocks a tenant's token from being used to inject data for another domain.
-3. Records are inserted in bulk. Unseen source IPs are queued for enrichment (rDNS, ASN, known-sender match).
+3. Records are inserted in bulk. Unseen source IPs are queued for enrichment (rDNS, ASN, known-sender match) (M6).
+
+Message statuses: `processed`, `ignored` (no report attachment), `quarantined` (report for a domain the token doesn't cover), `failed` (unparseable; can be re-queued from the admin Ingest queue).
 4. `daily_domain_stats` and `daily_source_stats` rollups are updated for the affected (domain, day) pairs.
 5. Alert evaluation runs (see §7).
 
@@ -146,10 +148,15 @@ All tenant-owned tables carry `tenant_id` with a global scope; Filament's tenanc
 | `notification_channels` | tenant_id, type (`email`, `webhook`), config (encrypted), events subscribed |
 | `audit_log` | actor, tenant_id, action, subject, changes |
 
-Retention job (nightly):
+Retention job (nightly, `dmarc:prune`):
 - Deletes `reports`/`report_records` and raw `.eml` files older than the tenant's `retention_days_raw`
 - Daily rollups are kept indefinitely
-- `report_records` is partitioned by month (MariaDB RANGE partitioning) so dropping old data is cheap
+- No table partitioning in v1: at the target scale, chunked deletes are fast enough, and MariaDB partitioning can't be combined with the foreign keys we rely on. Revisit if `report_records` grows past ~50M rows.
+
+Rollups:
+- `daily_source_stats` is keyed by source IP rather than by sender, so sender identification can improve later without rebuilding rollups; grouping into senders happens at query time via `ip_intel`.
+- Rollups are recomputed per (domain, day) from `report_records` rather than incremented, so retries and duplicates can't double-count.
+- A report is attributed to the UTC day of its `date_range/begin`.
 
 ---
 
