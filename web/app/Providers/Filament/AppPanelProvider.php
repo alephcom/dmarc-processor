@@ -38,6 +38,7 @@ class AppPanelProvider extends PanelProvider
             ->tenant(Tenant::class, slugAttribute: 'slug')
             ->tenantMiddleware([EnforceTenantMfa::class], isPersistent: true)
             ->brandName(config('app.name'))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('partials.favicon'))
             ->colors(['primary' => Color::Sky])
             ->multiFactorAuthentication([AppAuthentication::make()->recoverable()])
             ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
