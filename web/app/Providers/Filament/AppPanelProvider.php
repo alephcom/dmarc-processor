@@ -40,6 +40,7 @@ class AppPanelProvider extends PanelProvider
             ->tenantMiddleware([EnforceTenantMfa::class], isPersistent: true)
             ->brandName(config('app.name'))
             ->colors(['primary' => Color::Sky])
+            ->sidebarCollapsibleOnDesktop()
             ->multiFactorAuthentication([AppAuthentication::make()->recoverable()])
             ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
             ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
@@ -49,6 +50,7 @@ class AppPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.impersonation-banner'))
             // SSO is offered on the tenant panel only; MSP admins always use password + 2FA.
             ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('filament.sso-buttons'))
+            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE, fn () => view('filament.login-intro'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

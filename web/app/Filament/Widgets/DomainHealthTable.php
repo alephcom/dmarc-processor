@@ -9,6 +9,7 @@ use App\Models\Domain;
 use App\Services\DomainStats;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
@@ -56,10 +57,9 @@ abstract class DomainHealthTable extends TableWidget
                     ->description(fn (Domain $d) => $d->current_policy === $d->target_policy && ($d->current_pct ?? 100) >= 100
                         ? 'At target' : "Target p={$d->target_policy}"),
                 TextColumn::make('messages')->numeric()->alignEnd()->sortable(),
-                TextColumn::make('pass_rate')->label('DMARC pass')->alignEnd()->badge()
-                    ->state(fn (Domain $d) => DomainStats::rate((int) $d->passing, (int) $d->messages))
-                    ->formatStateUsing(fn ($state) => $state === null ? '—' : $state.'%')
-                    ->color(fn ($state) => $state === null ? 'gray' : ($state >= 98 ? 'success' : ($state >= 90 ? 'warning' : 'danger'))),
+                ViewColumn::make('pass_rate')->label('DMARC pass')->alignEnd()
+                    ->view('filament.tables.pass-rate')
+                    ->state(fn (Domain $d) => DomainStats::rate((int) $d->passing, (int) $d->messages)),
                 TextColumn::make('open_alerts')->label('Open alerts')->alignEnd()->sortable()->badge()
                     ->formatStateUsing(fn (int $state) => $state ?: '—')
                     ->color(fn (int $state) => $state ? 'danger' : 'gray'),

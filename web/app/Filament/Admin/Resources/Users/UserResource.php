@@ -19,9 +19,11 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
-    protected static ?string $recordTitleAttribute = 'email';
+    protected static string|\UnitEnum|null $navigationGroup = 'Customers';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Settings';
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $recordTitleAttribute = 'email';
 
     /** People join through invitations (or `dmarc:make-super-admin`), not by being created here. */
     public static function canCreate(): bool
