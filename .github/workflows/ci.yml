@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck -x install.sh
+      - name: Unattended configuration
+        env:
+          APP_HOST: dmarc.ci-test.example
+          ACME_EMAIL: ops@ci-test.example
+          MAIL_HOST: smtp.ci-test.example
+          MAIL_PASSWORD: 'p@ss $HOME #x \ y'
+        run: ./install.sh --config-only --non-interactive
+      - name: Compose accepts the generated .env
+        run: docker compose config -q
+      - name: DNS check warns (doesn't abort) when hostnames don't resolve yet
+        run: |
+          out=$(bash -c 'source ./install.sh; INTERACTIVE=0; check_dns; echo REACHED_END' 2>&1)
+          echo "$out"
+          grep -q 'does not resolve yet' <<<"$out"
+          grep -q REACHED_END <<<"$out"
+      - name: Re-run keeps generated secrets
+        run: |
+          before=$(grep '^APP_KEY=' .env)
+          ./install.sh --config-only --non-interactive
+          test "$before" = "$(grep '^APP_KEY=' .env)"
+
+  smtp-receiver:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: smtp-receiver
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: smtp-receiver/go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_DATABASE: testing
+          MARIADB_USER: testing
+          MARIADB_PASSWORD: testing
+          MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-retries=20
+    strategy:
+      matrix:
+        db: [sqlite, mariadb]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: intl, zip, pdo_mysql, pdo_sqlite
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist
+      - run: cp .env.example .env && php artisan key:generate
+      - name: Pint (code style)
+        run: vendor/bin/pint --test
+      - name: Tests (sqlite)
+        if: matrix.db == 'sqlite'
+        run: php artisan test
+      - name: Tests (MariaDB)
+        if: matrix.db == 'mariadb'
+        env:
+          DB_CONNECTION: mariadb
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: testing
+          DB_USERNAME: testing
+          DB_PASSWORD: testing
+        run: php artisan test
