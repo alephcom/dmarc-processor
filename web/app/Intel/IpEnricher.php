@@ -31,7 +31,7 @@ class IpEnricher
     {
         [$rdns, $verified] = $this->reverseDns($ip);
         $asn = $this->asnDb->lookup($ip);
-        $match = $this->identifier->identify($rdns, $verified, $asn?->asn);
+        $match = $this->identifier->identify($rdns, $verified, $asn?->asn, $ip);
 
         return IpIntel::updateOrCreate(['ip' => $ip], [
             'rdns' => $rdns,

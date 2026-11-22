@@ -27,11 +27,11 @@ class KnownSenderForm
             TextInput::make('docs_url')->label('DKIM setup guide URL')->url()->maxLength(255)
                 ->helperText('Shown to customers when this sender fails DMARC.')->columnSpanFull(),
             Section::make('How we recognise it')
-                ->description('Matching uses reverse DNS (only when it resolves back to the IP) and dedicated networks. Domains match their subdomains too (sendgrid.net matches o1.sendgrid.net). After saving, all source IPs are re-identified in the background.')
+                ->description('Matching uses reverse DNS (only when it resolves back to the IP), the IP ranges published in the SPF include domains below (live DNS, cached 24 hours), and dedicated networks. Domains match their subdomains too (sendgrid.net matches o1.sendgrid.net). After saving, all source IPs are re-identified in the background.')
                 ->columnSpanFull()
                 ->schema([
                     $domains('rdns_suffixes', 'Reverse DNS suffixes', 'Only used when the reverse DNS name resolves back to the IP.'),
-                    $domains('spf_includes', 'SPF / bounce domains', 'Reference only. Not used for matching: SPF results come from unauthenticated reports and could be forged.'),
+                    $domains('spf_includes', 'SPF include domains', 'The domains this sender tells customers to include in SPF (e.g. sendgrid.net). We look up their published IP ranges in live DNS; an IP inside them is identified as this sender. Use the provider\'s own include, not a company\'s main domain.'),
                     $domains('dkim_domains', 'DKIM signing domains', 'Reference only. Not used for matching (forgeable in reports, and signatures survive forwarding).'),
                     TagsInput::make('asns')->label('Dedicated ASNs')
                         ->helperText('Only networks used exclusively by this sender. Never add shared clouds (AWS, Azure, Google Cloud).')

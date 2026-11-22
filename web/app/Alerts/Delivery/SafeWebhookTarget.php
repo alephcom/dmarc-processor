@@ -4,6 +4,7 @@ namespace App\Alerts\Delivery;
 
 use App\Dns\DnsLookupException;
 use App\Dns\Resolver;
+use App\Support\Cidr;
 use InvalidArgumentException;
 
 /**
@@ -65,28 +66,11 @@ class SafeWebhookTarget
         }
         // Ranges PHP's flags don't cover: CGNAT, IPv4-mapped/NAT64 forms of private space, multicast.
         foreach (['100.64.0.0/10', '192.0.0.0/24', '198.18.0.0/15', '224.0.0.0/4', '::ffff:0:0/96', '64:ff9b::/96', 'ff00::/8'] as $cidr) {
-            if (self::inCidr($ip, $cidr)) {
+            if (Cidr::contains($cidr, $ip)) {
                 return false;
             }
         }
 
         return true;
-    }
-
-    private static function inCidr(string $ip, string $cidr): bool
-    {
-        [$net, $bits] = explode('/', $cidr);
-        $ipBin = inet_pton($ip);
-        $netBin = inet_pton($net);
-        if ($ipBin === false || $netBin === false || strlen($ipBin) !== strlen($netBin)) {
-            return false;
-        }
-        $bytes = intdiv((int) $bits, 8);
-        $rem = (int) $bits % 8;
-        if (substr($ipBin, 0, $bytes) !== substr($netBin, 0, $bytes)) {
-            return false;
-        }
-
-        return $rem === 0 || ((ord($ipBin[$bytes]) ^ ord($netBin[$bytes])) & (0xFF << (8 - $rem)) & 0xFF) === 0;
     }
 }

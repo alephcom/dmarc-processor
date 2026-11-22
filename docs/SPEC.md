@@ -231,10 +231,11 @@ Charts show messages passing vs failing DMARC as stacked bars (daily; weekly for
 - **Source drill-down:** IPs, rDNS, header_from/envelope_from pairs, DKIM selectors seen, failing reasons, and suggested fixes (e.g. "Add `include:sendgrid.net` to SPF", "Enable DKIM signing in Mailchimp")
 
 ### Sender identification
-- Each source IP is enriched once (refreshed every 30 days) with reverse DNS, ASN/organisation (offline DB-IP or IPinfo Lite database, `dmarc:update-ip-db`) and a known-sender match. `ip_intel` is shared by all tenants, so only signals we verify ourselves count:
+- Each source IP is enriched once (refreshed every 30 days) with reverse DNS, ASN/organisation (offline DB-IP or IPinfo Lite database, `dmarc:update-ip-db`) and a known-sender match. `ip_intel` is shared by all tenants, so only signals we verify ourselves count. Evidence, strongest first:
   1. Forward-confirmed reverse DNS ending in a sender's suffix. Unconfirmed rDNS is ignored: anyone can set their own PTR to `mail.google.com`.
-  2. A network (ASN) dedicated to the sender. Shared clouds are never listed.
-  Report contents (`auth_results` SPF/DKIM domains) are never used: reports are unauthenticated, and anyone who knows a published `rua` address could otherwise relabel an IP for every tenant (security review finding). The catalogue's SPF/DKIM domain lists are reference information only.
+  2. **Published SPF ranges:** the IP is inside the ranges the sender's *own* SPF include domain authorises (e.g. `sendgrid.net`, `_spf.google.com`), fetched from live DNS (`SpfRangeIndex`: follows include/redirect, `a`/`mx`, ignores non-pass qualifiers, macros and absurdly broad ranges; cached 24 h, failures cached 5 min and never treated as a match). When several senders cover an IP, the most specific range wins, then the most direct (a company whose SPF includes Google's record loses to Google); an exact tie means no match.
+  3. A network (ASN) dedicated to the sender. Shared clouds are never listed.
+  Report contents (`auth_results` SPF/DKIM results) are never used: reports are unauthenticated, and anyone who knows a published `rua` address could otherwise relabel an IP for every tenant (security review finding). Catalogue `spf_includes` must be the provider's own include domain, not a company's main domain.
 - Sources are grouped as identified service → network (ASN) → single IP. Grouping keys live on `daily_source_stats.source_key` and are updated when identification improves; classifications carry over.
 - The catalogue ships with about 30 providers and is editable by MSP admins (Admin → Known senders); saving re-identifies all IPs (`dmarc:reidentify-sources`).
 - Users classify each source as `legit` / `unknown` / `suspicious`; unclassified sources default to `unknown`. "Senders to review" = failing DMARC and not marked legitimate.
