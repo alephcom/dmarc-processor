@@ -32,6 +32,8 @@ class AdminPanelProvider extends PanelProvider
             ->profile()
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->brandName(config('app.name').' · MSP Admin')
+            ->brandLogo(fn () => view('filament.brand-logo', ['name' => config('app.name').' · MSP Admin']))
+            ->brandLogoHeight('2rem')
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('partials.favicon'))
             ->colors(['primary' => Color::Indigo])
             ->multiFactorAuthentication([AppAuthentication::make()->recoverable()], isRequired: true)
