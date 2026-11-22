@@ -110,6 +110,12 @@ Keep copies off the server.
    ```bash
    nc -vz mx.reports.example-msp.com 25
    ```
+   For a fuller check (banner, STARTTLS and certificate, `550` for unknown addresses, and optionally a sample report delivered end to end), use `scripts/smtp-test.py` (Python 3, no dependencies):
+   ```bash
+   scripts/smtp-test.py mx.reports.example-msp.com --reports-domain reports.example-msp.com
+   scripts/smtp-test.py mx.reports.example-msp.com --to rua-<token>@reports.example-msp.com --domain customer.com
+   ```
+   The second form sends a small test report for `customer.com`, which then shows up in that domain's reports. Add `--insecure` when connecting by IP, `-v` to see the SMTP conversation.
 4. Look for `accepted`, `delivered` or `rejected` lines in the receiver's log:
    ```bash
    docker compose logs smtp-receiver
