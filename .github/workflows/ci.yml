@@ -11,7 +11,7 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: shellcheck
         run: shellcheck -x install.sh scripts/migrate.sh
       - name: Unattended configuration
@@ -54,7 +54,7 @@ jobs:
       run:
         working-directory: smtp-receiver
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
           go-version-file: smtp-receiver/go.mod
@@ -67,7 +67,7 @@ jobs:
     # Known-vulnerability checks. Also runs weekly so new advisories surface without a push.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
@@ -104,7 +104,7 @@ jobs:
       matrix:
         db: [sqlite, mariadb]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
