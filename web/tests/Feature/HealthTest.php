@@ -11,7 +11,7 @@ class HealthTest extends TestCase
         $this->get('/up')->assertOk();
     }
 
-    public function test_root_redirects_to_app(): void
+    public function test_root_redirects_to_app_when_public_site_is_off(): void
     {
         $this->get('/')->assertRedirect('/app');
     }
