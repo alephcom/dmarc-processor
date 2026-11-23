@@ -12,6 +12,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -32,6 +33,9 @@ class AdminPanelProvider extends PanelProvider
             ->profile()
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->brandName(config('app.name').' · MSP Admin')
+            ->brandLogo(fn () => view('filament.brand-logo', ['name' => config('app.name').' · MSP Admin']))
+            ->brandLogoHeight('2rem')
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('partials.favicon'))
             ->colors(['primary' => Color::Violet])
             ->sidebarCollapsibleOnDesktop()
             ->navigationGroups(['Customers', 'Monitoring', 'Settings'])

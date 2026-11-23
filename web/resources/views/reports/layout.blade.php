@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    @include('partials.favicon')
     <title>@yield('title') · {{ config('dmarc.brand_name') }}</title>
     <style>
         /* Reports are documents: always light, sized for A4/Letter. */

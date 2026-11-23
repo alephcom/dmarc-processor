@@ -98,7 +98,7 @@ class SecurityHardeningTest extends TestCase
         $r = $this->get('/app/login')->assertOk()
             ->assertHeader('X-Content-Type-Options', 'nosniff')
             ->assertHeader('X-Frame-Options', 'DENY')
-            ->assertHeader('Referrer-Policy', 'same-origin');
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         $this->assertStringContainsString("frame-ancestors 'none'", $r->headers->get('Content-Security-Policy'));
         $r->assertHeaderMissing('Strict-Transport-Security');
 

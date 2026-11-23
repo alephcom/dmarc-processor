@@ -22,8 +22,9 @@ class SecurityHeaders
         $h->set('X-Content-Type-Options', 'nosniff');
         $h->set('X-Frame-Options', 'DENY');
         $h->set('Content-Security-Policy', "frame-ancestors 'none'; base-uri 'self'; object-src 'none'");
-        // Shared report links are signed URLs: never send them (or any path) to another site.
-        $h->set('Referrer-Policy', 'same-origin');
+        // Shared report links are signed URLs: other sites get the origin only, never the path or query.
+        // (Not 'same-origin': Turnstile on the public form needs the origin to verify the site.)
+        $h->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $h->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
         $h->set('Cross-Origin-Opener-Policy', 'same-origin');
 

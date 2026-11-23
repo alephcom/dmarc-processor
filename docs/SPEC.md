@@ -15,7 +15,7 @@ A self-hosted, multi-tenant DMARC analyzer for an MSP. It should:
 
 ### Non-goals (v1)
 - Forensic/failure (RUF) reports
-- Public self-service sign-up and billing
+- Instant self-service sign-up (accounts are requested and reviewed, see §8) and billing
 - Per-tenant white-labeling (MSP branding only)
 - MTA-STS / TLS-RPT / BIMI checks (possible v2)
 - Server-generated PDF files (printable HTML reports instead, see §7)
@@ -290,6 +290,7 @@ Rendered as a dedicated HTML page with a print stylesheet:
 - Shareable via a signed link (14 days) so people without an account can open it. Links carry the tenant's share version; "Revoke all share links" invalidates every one. Owners/admins only.
 - Chart rendered server-side as inline SVG (same colours as the dashboards)
 - Branding from `DMARC_BRAND_NAME`, `DMARC_BRAND_LOGO_URL`, `DMARC_BRAND_CONTACT`
+- Favicon: `web/public/favicon.svg` (source), with `favicon.ico` (16/32/48) and `apple-touch-icon.png` (180) generated from it; linked from both panels, reports and invitation pages via `partials/favicon.blade.php` and also used as the panel brand logo next to the name (`filament/brand-logo.blade.php`)
 
 No server-side PDF engine in v1; one could be added later by rendering the same page.
 
@@ -325,8 +326,20 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
   - SSO sessions satisfy a tenant's "require 2FA" setting (the IdP does the second factor)
   - Buttons appear only for providers with credentials configured
 
+### Public site and account requests
+- Off unless `PUBLIC_SITE_ENABLED=true`; otherwise `/` redirects to `/app` and the request pages return 404.
+- `/`: public page (no sign-in) explaining that email security basics should be easy and free, what the service does, how to request an account, the free hosting limit (`PUBLIC_SITE_FREE_MONTHLY_EMAILS`, default 10,000 emails a month) and a link to the GitHub repository (`PUBLIC_SITE_REPO_URL`) for anyone sending more who should self-host. It states that the free service doesn't include tech support.
+- `/request-account`: name, email, organisation, domains, optional message, and a required confirmation that the domains send no more than the free limit. Promises review within `PUBLIC_SITE_REVIEW_HOURS` (default 48).
+  - Abuse controls: Turnstile (below), 5 submissions per 10 minutes per IP, a hidden honeypot field (silently ignored), and one pending request per email address (resubmitting doesn't add another). Nothing is emailed to the requester at submission, so the form can't be used to send mail to arbitrary addresses.
+  - Cloudflare Turnstile when `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` are set: the token is verified server-side (`siteverify`, 5 s timeout) and must carry the form's action (`account-request`). Fails closed: a missing/invalid token or Cloudflare being unreachable rejects the submission with a "try again" message. `dmarc:install` warns when the public site is on without Turnstile keys.
+  - Super-admins get an in-app notification and a queued email for each new request.
+- **Admin → Account requests** (`account_requests` table): pending/approved/rejected, filtered to pending by default, with a navigation badge.
+  - **Approve**: creates the tenant (name = organisation, unique slug) and issues an owner invitation to the requester (the normal invitation flow, §8 Invitations). The requester adds domains themselves via the setup wizard. Invitation emails for organisations created this way (including later team invitations) say the free service doesn't include tech support.
+  - **Decline**: optionally emails the requester, with an optional note and a link to the self-hosting instructions.
+  - Both are audited (`account_request.approved` / `account_request.rejected`) and refuse a request that was already reviewed (row lock against double approval).
+
 ### Audit log
-- Recorded automatically for user-initiated changes to: domains, sender classifications, notification channels, alert settings, organisation settings, known senders, team memberships, invitations, users (incl. 2FA enabled/disabled), and manual alert resolution. Also: sign-ins, failed sign-ins, password resets, invitation acceptance, impersonation start/end.
+- Recorded automatically for user-initiated changes to: domains, sender classifications, notification channels, alert settings, organisation settings, known senders, team memberships, invitations, users (incl. 2FA enabled/disabled), and manual alert resolution. Also: sign-ins, failed sign-ins, password resets, invitation acceptance, impersonation start/end, account request approval/decline.
 - Changes made by the system (DNS scanner, report import, scheduled jobs) are not recorded; only allow-listed fields are diffed. Secrets (webhook config, passwords, TOTP seeds) are recorded as "changed" without values.
 - Each entry: when, actor, impersonator, tenant, action, description, before/after changes, IP, user agent.
 - Tenants see their own entries (Settings → Activity, owners/admins); super-admins see everything (Admin → Audit log). Entries are never editable.
@@ -344,7 +357,7 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
 - Tenant-supplied webhook URLs can't reach internal services (see Notification channels)
 - Behind Caddy: the app trusts `X-Forwarded-Proto/For/Port` from the proxy hop (the web container isn't published; Caddy discards client-supplied forwarding headers) but never `X-Forwarded-Host`. Generated URLs are forced to `https` when `APP_URL` is https, and session cookies are `Secure`.
 - Rate limiting on login and on the receiver
-- Response headers (`SecurityHeaders` middleware): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'; base-uri 'self'; object-src 'none'` (no script CSP: Filament needs inline scripts), `Referrer-Policy: same-origin` so signed share links never leak in a Referer, `Permissions-Policy`, and HSTS (1 year) on HTTPS. Caddy drops its `Server` header. `robots.txt` disallows everything.
+- Response headers (`SecurityHeaders` middleware): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'; base-uri 'self'; object-src 'none'` (no script CSP: Filament needs inline scripts), `Referrer-Policy: strict-origin-when-cross-origin` so signed share links never leak in a Referer (other sites see the origin only, which Turnstile needs), `Permissions-Policy`, and HSTS (1 year) on HTTPS. Caddy drops its `Server` header. `robots.txt` allows only the public pages.
 - Sessions are encrypted at rest (`SESSION_ENCRYPT=true`)
 - CI runs `composer audit` and `govulncheck` on every push and weekly; Dependabot raises update PRs for Composer, npm, Go modules, Docker images and GitHub Actions
 - Every config change is recorded in the audit log
@@ -361,6 +374,7 @@ INGEST_HMAC_SECRET=...
 MAIL_*            # outbound SMTP relay for alerts/digests
 IPINFO_TOKEN=...  # optional; DB-IP fallback without a token
 MS_CLIENT_ID / MS_CLIENT_SECRET / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+PUBLIC_SITE_ENABLED=false   # public home page + free account requests (§8)
 ```
 
 A first-run CLI (`php artisan dmarc:install`):
@@ -369,7 +383,7 @@ A first-run CLI (`php artisan dmarc:install`):
 - Prints the DNS records to publish and offers to create the first super-admin
 - `--check` runs non-interactively and exits non-zero if a required check fails (for scripts/monitoring)
 
-Installer script (`install.sh`, repository root): checks the server, offers to install Docker (official apt repository), asks for hostnames and the SMTP relay, generates all secrets into `.env`, checks DNS, starts the stack, downloads the IP database, creates the first admin and runs `dmarc:install --check`. Idempotent (also used for upgrades); `--non-interactive` for automation, `--config-only` to only write `.env`. Values are written single-quoted so `$`/`#` in passwords stay literal for both Compose and Laravel.
+Installer script (`install.sh`, repository root): checks the server, offers to install Docker (official apt repository), asks for hostnames, the SMTP relay and whether to enable the public site (with optional Turnstile keys; off by default), generates all secrets into `.env`, checks DNS, starts the stack, downloads the IP database, creates the first admin and runs `dmarc:install --check`. Idempotent (also used for upgrades); `--non-interactive` for automation, `--config-only` to only write `.env`. `scripts/migrate.sh export`/`import` moves an installation to a new server: one tar bundle with `.env`, a database dump and the `app_storage`, `smtp_spool`, `redis_data` and Caddy volumes, checksummed; import refuses to overwrite existing data without `--force` and finishes by running `install.sh`. Values are written single-quoted so `$`/`#` in passwords stay literal for both Compose and Laravel.
 
 Operator docs: `docs/INSTALL.md`, `docs/OPERATIONS.md`.
 

@@ -38,7 +38,7 @@ cd dmarc-processor && sudo ./install.sh
 
 The script:
 - checks the server (ports 25/80/443 free, memory) and offers to install Docker from Docker's official repository;
-- asks for your hostnames and SMTP relay, generates every secret and writes `.env` (mode 600);
+- asks for your hostnames and SMTP relay, and whether to turn on the public home page with free account requests (plus its Cloudflare Turnstile keys, section 7); generates every secret and writes `.env` (mode 600);
 - checks that your DNS resolves, then builds and starts the stack;
 - downloads the IP database, creates the first MSP admin, and runs `dmarc:install --check`.
 
@@ -66,7 +66,7 @@ Edit `.env`:
   openssl rand -hex 32
   ```
 - `MAIL_*`: your SMTP relay
-- Optional: `IPINFO_TOKEN` (better sender identification), `DMARC_BRAND_*` (report branding), SSO keys (section 6)
+- Optional: `IPINFO_TOKEN` (better sender identification), `DMARC_BRAND_*` (report branding), SSO keys (section 6), `PUBLIC_SITE_*` (section 7)
 
 Generate the application key and paste it into `APP_KEY`:
 
@@ -141,6 +141,30 @@ The first time a customer's user signs in, they (or their admin) consent to the 
    docker compose up -d
    ```
 
-## 7. Next
+## 7. Public home page and free accounts (optional)
 
-See [OPERATIONS.md](OPERATIONS.md) for upgrades, backups, monitoring and troubleshooting.
+By default `/` sends visitors straight to the sign-in page. To offer free hosted accounts, answer yes to the installer's public-page question (`sudo ./install.sh --reconfigure` on an existing install), or set in `.env`:
+
+```
+PUBLIC_SITE_ENABLED=true
+TURNSTILE_SITE_KEY=...      # Cloudflare Turnstile, strongly recommended
+TURNSTILE_SECRET_KEY=...
+# Optional, shown with these defaults:
+PUBLIC_SITE_FREE_MONTHLY_EMAILS=10000
+PUBLIC_SITE_REVIEW_HOURS=48
+PUBLIC_SITE_REPO_URL=https://github.com/alephcom/dmarc-processor
+```
+
+To get the Turnstile keys, open the Cloudflare dashboard → **Turnstile** → **Add widget**, enter your web UI hostname (e.g. `dmarc.example-msp.com`) and choose **Managed** mode. Without the keys the form still works, protected only by rate limiting and a hidden honeypot field, and `dmarc:install --check` shows a warning.
+
+Then run:
+
+```bash
+docker compose up -d
+```
+
+`/` then shows a public page explaining the service, with a **Request a free account** form. Each request appears under **Admin → Account requests** (super-admins also get an in-app notification and an email). **Approve** creates the organisation and emails the requester an invitation to join as owner; **Decline** can email them a short note pointing to the self-hosting instructions.
+
+## 8. Next
+
+See [OPERATIONS.md](OPERATIONS.md) for upgrades, backups, moving to a new server, monitoring and troubleshooting.

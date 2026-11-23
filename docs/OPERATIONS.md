@@ -83,6 +83,34 @@ gunzip -c backup-YYYY-MM-DD.sql.gz | docker compose exec -T mariadb sh -c 'maria
 
 Keep copies off the server.
 
+## Moving to a new server
+
+`scripts/migrate.sh` packs everything into one file on the old server and restores it on the new one. That covers `.env`, a database dump, raw report emails, the receiver's spool, the Redis queue and Caddy's certificates. Reports sent during the move aren't lost: while port 25 is closed, the sending mail servers queue them and retry for several days.
+
+1. **A day before:** lower the TTL on the web UI hostname and `MX_HOSTNAME` to about 5 minutes. The `MX` record points to a hostname, so only those two A/AAAA records change.
+2. **Old server:** stop the stack and write the bundle. The stack stays stopped so nothing lands here after the export. Add `--restart` for a trial run that brings it back up.
+   ```bash
+   sudo scripts/migrate.sh export
+   ```
+3. **Copy it across.** It contains `.env` (`APP_KEY`, passwords), so copy it securely:
+   ```bash
+   scp dmarc-migration-*.tar new-server:
+   ```
+4. **New server:** clone the repository, at the same version or newer, and import. This installs Docker if needed, checks the bundle's checksums, restores everything, then runs `install.sh`. It refuses to overwrite an existing `.env` or data unless you pass `--force`.
+   ```bash
+   sudo scripts/migrate.sh import ~/dmarc-migration-YYYYMMDD-HHMMSS.tar
+   ```
+5. **Switch DNS:** point the A/AAAA records at the new server, then check:
+   ```bash
+   docker compose exec web php artisan dmarc:install --check
+   ```
+   ```bash
+   scripts/smtp-test.py mx.reports.example-msp.com --reports-domain reports.example-msp.com
+   ```
+6. **Afterwards:** delete the bundle, and keep the old server stopped but intact for a few days. To roll back, point DNS back and run `docker compose up -d` on the old server.
+
+If the new server has a different IP, update any firewall allow-lists and the reverse DNS (PTR) record if you set one.
+
 ## Monitoring
 
 - **MSP dashboard** (`/admin`): domains not reporting for 72 h+, ingest problems, open alerts
@@ -113,6 +141,12 @@ Keep copies off the server.
    ```bash
    nc -vz mx.reports.example-msp.com 25
    ```
+   For a fuller check (banner, STARTTLS and certificate, `550` for unknown addresses, and optionally a sample report delivered end to end), use `scripts/smtp-test.py` (Python 3, no dependencies):
+   ```bash
+   scripts/smtp-test.py mx.reports.example-msp.com --reports-domain reports.example-msp.com
+   scripts/smtp-test.py mx.reports.example-msp.com --to rua-<token>@reports.example-msp.com --domain customer.com
+   ```
+   The second form sends a small test report for `customer.com`, which then shows up in that domain's reports. Add `--insecure` when connecting by IP, `-v` to see the SMTP conversation.
 4. Look for `accepted`, `delivered` or `rejected` lines in the receiver's log:
    ```bash
    docker compose logs smtp-receiver
