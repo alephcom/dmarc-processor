@@ -328,7 +328,7 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
   - Cloudflare Turnstile when `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` are set: the token is verified server-side (`siteverify`, 5 s timeout) and must carry the form's action (`account-request`). Fails closed: a missing/invalid token or Cloudflare being unreachable rejects the submission with a "try again" message. `dmarc:install` warns when the public site is on without Turnstile keys.
   - Super-admins get an in-app notification and a queued email for each new request.
 - **Admin → Account requests** (`account_requests` table): pending/approved/rejected, filtered to pending by default, with a navigation badge.
-  - **Approve**: creates the tenant (name = organisation, unique slug) and issues an owner invitation to the requester (the normal invitation flow, §8 Invitations). The requester adds domains themselves via the setup wizard.
+  - **Approve**: creates the tenant (name = organisation, unique slug) and issues an owner invitation to the requester (the normal invitation flow, §8 Invitations). The requester adds domains themselves via the setup wizard. Invitation emails for organisations created this way (including later team invitations) say the free service doesn't include tech support.
   - **Decline**: optionally emails the requester, with an optional note and a link to the self-hosting instructions.
   - Both are audited (`account_request.approved` / `account_request.rejected`) and refuse a request that was already reviewed (row lock against double approval).
 

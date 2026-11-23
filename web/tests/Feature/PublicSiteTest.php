@@ -194,7 +194,7 @@ class PublicSiteTest extends TestCase
         $this->assertSame('example-charity-2', $tenant->slug);
         $inv = Invitation::sole();
         $this->assertSame(['pat@example.org', 'owner', $tenant->id], [$inv->email, $inv->role, $inv->tenant_id]);
-        Mail::assertSent(InvitationMail::class, fn ($m) => $m->hasTo('pat@example.org'));
+        Mail::assertSent(InvitationMail::class, fn ($m) => $m->hasTo('pat@example.org') && str_contains($m->render(), 'include tech support'));
         $this->assertTrue(AuditLog::where('action', 'account_request.approved')->exists());
 
         // Already reviewed: no second organisation.
