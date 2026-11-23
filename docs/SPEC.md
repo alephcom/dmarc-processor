@@ -15,7 +15,7 @@ A self-hosted, multi-tenant DMARC analyzer for an MSP. It should:
 
 ### Non-goals (v1)
 - Forensic/failure (RUF) reports
-- Public self-service sign-up and billing
+- Instant self-service sign-up (accounts are requested and reviewed, see §8) and billing
 - Per-tenant white-labeling (MSP branding only)
 - MTA-STS / TLS-RPT / BIMI checks (possible v2)
 - Server-generated PDF files (printable HTML reports instead, see §7)
@@ -320,8 +320,20 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
   - SSO sessions satisfy a tenant's "require 2FA" setting (the IdP does the second factor)
   - Buttons appear only for providers with credentials configured
 
+### Public site and account requests
+- Off unless `PUBLIC_SITE_ENABLED=true`; otherwise `/` redirects to `/app` and the request pages return 404.
+- `/`: public page (no sign-in) explaining that email security basics should be easy and free, what the service does, how to request an account, the free hosting limit (`PUBLIC_SITE_FREE_MONTHLY_EMAILS`, default 10,000 emails a month) and a link to the GitHub repository (`PUBLIC_SITE_REPO_URL`) for anyone sending more who should self-host. It states that the free service doesn't include tech support.
+- `/request-account`: name, email, organisation, domains, optional message, and a required confirmation that the domains send no more than the free limit. Promises review within `PUBLIC_SITE_REVIEW_HOURS` (default 48).
+  - Abuse controls: Turnstile (below), 5 submissions per 10 minutes per IP, a hidden honeypot field (silently ignored), and one pending request per email address (resubmitting doesn't add another). Nothing is emailed to the requester at submission, so the form can't be used to send mail to arbitrary addresses.
+  - Cloudflare Turnstile when `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` are set: the token is verified server-side (`siteverify`, 5 s timeout) and must carry the form's action (`account-request`). Fails closed: a missing/invalid token or Cloudflare being unreachable rejects the submission with a "try again" message. `dmarc:install` warns when the public site is on without Turnstile keys.
+  - Super-admins get an in-app notification and a queued email for each new request.
+- **Admin → Account requests** (`account_requests` table): pending/approved/rejected, filtered to pending by default, with a navigation badge.
+  - **Approve**: creates the tenant (name = organisation, unique slug) and issues an owner invitation to the requester (the normal invitation flow, §8 Invitations). The requester adds domains themselves via the setup wizard.
+  - **Decline**: optionally emails the requester, with an optional note and a link to the self-hosting instructions.
+  - Both are audited (`account_request.approved` / `account_request.rejected`) and refuse a request that was already reviewed (row lock against double approval).
+
 ### Audit log
-- Recorded automatically for user-initiated changes to: domains, sender classifications, notification channels, alert settings, organisation settings, known senders, team memberships, invitations, users (incl. 2FA enabled/disabled), and manual alert resolution. Also: sign-ins, failed sign-ins, invitation acceptance, impersonation start/end.
+- Recorded automatically for user-initiated changes to: domains, sender classifications, notification channels, alert settings, organisation settings, known senders, team memberships, invitations, users (incl. 2FA enabled/disabled), and manual alert resolution. Also: sign-ins, failed sign-ins, invitation acceptance, impersonation start/end, account request approval/decline.
 - Changes made by the system (DNS scanner, report import, scheduled jobs) are not recorded; only allow-listed fields are diffed. Secrets (webhook config, passwords, TOTP seeds) are recorded as "changed" without values.
 - Each entry: when, actor, impersonator, tenant, action, description, before/after changes, IP, user agent.
 - Tenants see their own entries (Settings → Activity, owners/admins); super-admins see everything (Admin → Audit log). Entries are never editable.
@@ -353,6 +365,7 @@ INGEST_HMAC_SECRET=...
 MAIL_*            # outbound SMTP relay for alerts/digests
 IPINFO_TOKEN=...  # optional; DB-IP fallback without a token
 MS_CLIENT_ID / MS_CLIENT_SECRET / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+PUBLIC_SITE_ENABLED=false   # public home page + free account requests (§8)
 ```
 
 A first-run CLI (`php artisan dmarc:install`):

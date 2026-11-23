@@ -2,11 +2,15 @@
 
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SsoController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/app');
+Route::get('/', [PublicSiteController::class, 'home'])->name('public.home');
+Route::get('request-account', [PublicSiteController::class, 'create'])->name('public.request');
+Route::get('request-account/thanks', [PublicSiteController::class, 'requested'])->name('public.requested');
+Route::post('request-account', [PublicSiteController::class, 'store'])->middleware('throttle:5,10')->name('public.request.store');
 
 Route::middleware('throttle:20,1')->group(function () {
     Route::get('invitations/{token}', [InvitationController::class, 'show'])->name('invitations.show');
