@@ -167,4 +167,4 @@ docker compose up -d
 
 ## 8. Next
 
-See [OPERATIONS.md](OPERATIONS.md) for upgrades, backups, monitoring and troubleshooting.
+See [OPERATIONS.md](OPERATIONS.md) for upgrades, backups, moving to a new server, monitoring and troubleshooting.
