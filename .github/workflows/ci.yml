@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: shellcheck
-        run: shellcheck -x install.sh
+        run: shellcheck -x install.sh scripts/migrate.sh
       - name: Unattended configuration
         env:
           APP_HOST: dmarc.ci-test.example
