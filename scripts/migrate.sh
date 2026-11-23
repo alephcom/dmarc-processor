@@ -35,7 +35,13 @@ load_installer() {
   source "${ROOT}/install.sh"
 }
 load_installer
-trap 'rc=$?; trap - ERR; fail "Stopped (exit ${rc}) at line ${LINENO}: ${BASH_COMMAND}"; exit 1' ERR
+on_err() {
+  local rc=$?
+  trap - ERR
+  fail "Stopped (exit ${rc}) at line $1: $2"
+  exit 1
+}
+trap 'on_err "${LINENO}" "${BASH_COMMAND}"' ERR
 
 usage() {
   sed -n '3,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
