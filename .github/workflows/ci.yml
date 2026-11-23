@@ -26,6 +26,18 @@ jobs:
           echo "$out"
           grep -q 'does not resolve yet' <<<"$out"
           grep -q REACHED_END <<<"$out"
+      - name: Public site is off unless asked for
+        run: grep -qx "PUBLIC_SITE_ENABLED='false'" .env
+      - name: Public site and Turnstile keys are written when set
+        env:
+          PUBLIC_SITE_ENABLED: 'yes'
+          TURNSTILE_SITE_KEY: 0x4AAAAAAAci-site
+          TURNSTILE_SECRET_KEY: 0x4AAAAAAAci-secret
+        run: |
+          ./install.sh --config-only --non-interactive --reconfigure
+          grep -qx "PUBLIC_SITE_ENABLED='true'" .env
+          grep -qx "TURNSTILE_SITE_KEY='0x4AAAAAAAci-site'" .env
+          grep -qx "TURNSTILE_SECRET_KEY='0x4AAAAAAAci-secret'" .env
       - name: Re-run keeps generated secrets
         run: |
           before=$(grep '^APP_KEY=' .env)
