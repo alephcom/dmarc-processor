@@ -108,7 +108,8 @@ class TeamTest extends TestCase
             ->assertNotified('Invitation sent to New.Person@Acme.test');
         $inv = Invitation::sole();
         $this->assertSame('new.person@acme.test', $inv->email);
-        Mail::assertSent(InvitationMail::class, fn ($m) => $m->hasTo('new.person@acme.test') && str_contains($m->url, '/invitations/'));
+        Mail::assertSent(InvitationMail::class, fn ($m) => $m->hasTo('new.person@acme.test') && str_contains($m->url, '/invitations/')
+            && ! str_contains($m->render(), 'tech support')); // regular MSP customers don't get the free-service note
 
         Livewire::test(ListMemberships::class)
             ->callTableAction('role', $this->membership($viewer), data: ['role' => 'admin']);
