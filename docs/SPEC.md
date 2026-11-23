@@ -167,6 +167,7 @@ A Filament wizard that the user can leave and resume (progress stored in `domain
 1. **Add domain**
    - Enter the domain; it is validated and checked against the public suffix list
    - Rejected if already registered by another tenant (MSP admin can override)
+   - **Add several** (Domains page, owners/admins): paste up to 100 names (lines, commas or spaces). Each valid new name is created and its DNS scanned in the background; names already monitored anywhere are reported as such without saying by whom. The wizard is then finished per domain.
 2. **Current state scan** (runs after the page renders so DNS never blocks the request; rate-limited per domain)
    - Fetch existing `_dmarc`, SPF and common DKIM selectors (`google`, `selector1`, `selector2`, `k1`, `s1`, `default`, `mxvault`, …, plus user-supplied selectors)
    - Show a traffic-light summary with plain-English explanations
@@ -217,17 +218,21 @@ Implementation notes (`PolicyAdvisor`):
 ### Dashboards
 Charts show messages passing vs failing DMARC as stacked bars (daily; weekly for the 12-month view). Colours are a validated colourblind-safe blue/orange pair, not green/red. Periods: 7, 30, 90 days and 12 months (domain page, kept in the URL).
 - **MSP overview**
-  - All tenants/domains with health score
-  - Current policy vs target
+  - All tenants/domains with health: DMARC record status, 30-day pass rate (bar), last report (red after 72 h of silence)
+  - Current policy, with the target underneath ("Target p=reject" or "At target")
   - Last report received
-  - Open alerts
+  - Open alerts (count per domain)
 - **Tenant overview:** domains, overall pass rate, alerts
+  - Until a domain has received its first report, a getting-started panel replaces the empty widgets: "Add your first domain" (button for owners/admins), or "Waiting for the first reports" with a link to finish setup for a domain whose DMARC record isn't live yet
+- **Stat cards** (tenant and MSP): message volume and DMARC pass rate show a 30-day daily sparkline and the change against the prior 30 days (volume in %, pass rate in percentage points)
 - **Domain detail**
   - Volume and pass-rate time series (7/30/90/365 days)
   - SPF vs DKIM alignment breakdown
   - Disposition breakdown
   - Top sources table (known-sender name / ASN org, IP count, volume, pass %, classification)
   - Reporter breakdown (Google, Microsoft, Yahoo…)
+  - **Raw reports** (Domain → Raw reports): every report received, newest first, filterable by reporter; per report the individual records (source IP, count, disposition, DKIM/SPF results and alignment, header from; largest 500 shown) and a download of the original XML, re-extracted from the stored raw message (only the XML, never the email). Same access as the domain page.
+- **CSV export** on the domain tables (dashboard and MSP overview), senders and raw reports: the rows the table shows (search, filters, sort) with its visible columns, up to 20,000 rows. Cells starting with `= + - @` are prefixed with `'` so report-supplied text can't run as a spreadsheet formula.
 - **Source drill-down:** IPs, rDNS, header_from/envelope_from pairs, DKIM selectors seen, failing reasons, and suggested fixes (e.g. "Add `include:sendgrid.net` to SPF", "Enable DKIM signing in Mailchimp")
 
 ### Sender identification
@@ -312,6 +317,7 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
   - Start and end are audited; everything done meanwhile is recorded with both the customer user (actor) and the super-admin (impersonator).
   - The session ID is regenerated on each switch, and the session password hash is updated so the session-integrity middleware doesn't log the admin out.
 - **Users (Admin → Users):** edit name/email, toggle super-admin (not on yourself), reset a lost authenticator, delete (not yourself). People join via invitations; super-admins via `dmarc:make-super-admin`.
+- **Passwords:** at least 12 characters everywhere (invitations, profile, reset). "Forgot password?" on both sign-in pages sends a reset link only to users who can use that panel (customers get no `/admin` link); resets are audited.
 - **2FA:** TOTP (Filament's built-in), enforceable per tenant and mandatory for super-admins on *every* surface that honours super-admin rights: `/admin`, the tenant panel (super-admins without TOTP are sent to set it up), printable reports and Horizon. Report pages also apply the tenant's "require 2FA" setting (SSO sessions exempt).
 - **SSO:** Microsoft Entra ID and Google via Socialite, tenant panel only (super-admins are refused and must use password + TOTP)
   - Configured per tenant by MSP admins: email domains, allowed Entra directory (tenant) IDs, role for new users (viewer/admin)
@@ -333,7 +339,7 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
   - Both are audited (`account_request.approved` / `account_request.rejected`) and refuse a request that was already reviewed (row lock against double approval).
 
 ### Audit log
-- Recorded automatically for user-initiated changes to: domains, sender classifications, notification channels, alert settings, organisation settings, known senders, team memberships, invitations, users (incl. 2FA enabled/disabled), and manual alert resolution. Also: sign-ins, failed sign-ins, invitation acceptance, impersonation start/end, account request approval/decline.
+- Recorded automatically for user-initiated changes to: domains, sender classifications, notification channels, alert settings, organisation settings, known senders, team memberships, invitations, users (incl. 2FA enabled/disabled), and manual alert resolution. Also: sign-ins, failed sign-ins, password resets, invitation acceptance, impersonation start/end, account request approval/decline.
 - Changes made by the system (DNS scanner, report import, scheduled jobs) are not recorded; only allow-listed fields are diffed. Secrets (webhook config, passwords, TOTP seeds) are recorded as "changed" without values.
 - Each entry: when, actor, impersonator, tenant, action, description, before/after changes, IP, user agent.
 - Tenants see their own entries (Settings → Activity, owners/admins); super-admins see everything (Admin → Audit log). Entries are never editable.
@@ -351,6 +357,9 @@ No server-side PDF engine in v1; one could be added later by rendering the same 
 - Tenant-supplied webhook URLs can't reach internal services (see Notification channels)
 - Behind Caddy: the app trusts `X-Forwarded-Proto/For/Port` from the proxy hop (the web container isn't published; Caddy discards client-supplied forwarding headers) but never `X-Forwarded-Host`. Generated URLs are forced to `https` when `APP_URL` is https, and session cookies are `Secure`.
 - Rate limiting on login and on the receiver
+- Response headers (`SecurityHeaders` middleware): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'; base-uri 'self'; object-src 'none'` (no script CSP: Filament needs inline scripts), `Referrer-Policy: strict-origin-when-cross-origin` so signed share links never leak in a Referer (other sites see the origin only, which Turnstile needs), `Permissions-Policy`, and HSTS (1 year) on HTTPS. Caddy drops its `Server` header. `robots.txt` allows only the public pages.
+- Sessions are encrypted at rest (`SESSION_ENCRYPT=true`)
+- CI runs `composer audit` and `govulncheck` on every push and weekly; Dependabot raises update PRs for Composer, npm, Go modules, Docker images and GitHub Actions
 - Every config change is recorded in the audit log
 
 ---

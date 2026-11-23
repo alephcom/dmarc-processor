@@ -6,6 +6,9 @@
 {$APP_HOST} {
 	encode zstd gzip
 
+	# The app sets the security headers (HSTS, frame-ancestors, Referrer-Policy...); just don't advertise Caddy.
+	header -Server
+
 	# Internal endpoints are only for smtp-receiver on the Docker network.
 	@internal path /internal/*
 	respond @internal 404

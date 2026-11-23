@@ -2,6 +2,7 @@
 @if ($admin)
     {{-- Inline styles: this must render regardless of theme or panel CSS. --}}
     <div role="status" style="display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 16px;background:#b45309;color:#fff;font-size:14px;font-weight:500;">
+        <x-filament::icon icon="heroicon-m-eye" style="width:18px;height:18px;flex-shrink:0;" aria-hidden="true" />
         <span>You ({{ $admin->email }}) are signed in as <strong>{{ auth()->user()->email }}</strong>. Everything you do is recorded under both names.</span>
         <form method="post" action="{{ route('impersonation.leave') }}" style="margin:0;">
             @csrf

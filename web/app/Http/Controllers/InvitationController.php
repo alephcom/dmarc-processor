@@ -56,7 +56,7 @@ class InvitationController
             }
             $data = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
-                'password' => ['required', 'confirmed', Password::min(12)],
+                'password' => ['required', 'confirmed', Password::defaults()],
             ]);
             $user = User::create(['name' => $data['name'], 'email' => $inv->email, 'password' => $data['password']]);
             // Following the emailed link proves they control the address.

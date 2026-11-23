@@ -47,6 +47,32 @@ class DomainStats
         return array_map('intval', (array) $row);
     }
 
+    /**
+     * Totals for the period of the same length just before {@see totals()}, for "vs previous period" trends.
+     *
+     * @param  list<int>|int  $domainIds
+     * @return array{total: int, dmarc_pass: int}
+     */
+    public function previousTotals(array|int $domainIds, int $days): array
+    {
+        $row = DB::table('daily_domain_stats')
+            ->whereIn('domain_id', (array) $domainIds)
+            ->where('day', '>=', self::from($days * 2))
+            ->where('day', '<', self::from($days))
+            ->selectRaw('COALESCE(SUM(total),0) AS total, COALESCE(SUM(dmarc_pass),0) AS dmarc_pass')
+            ->first();
+
+        return array_map('intval', (array) $row);
+    }
+
+    /**
+     * Percentage change from $previous to $current, or null when there is nothing to compare against.
+     */
+    public static function change(int|float $current, int|float $previous): ?float
+    {
+        return $previous > 0 ? round(($current - $previous) / $previous * 100, 1) : null;
+    }
+
     public static function rate(int $part, int $total): ?float
     {
         return $total > 0 ? round($part / $total * 100, 1) : null;

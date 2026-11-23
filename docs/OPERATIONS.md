@@ -51,6 +51,9 @@ docker compose exec web php artisan dmarc:install --check
 
 Mail that arrives while `web` is restarting waits in the receiver's spool and is delivered once the app is back. Nothing is lost.
 
+Upgrade notes:
+- **Encrypted sessions** (added with the password reset release): sessions are now encrypted, so everyone is signed out once after this upgrade.
+
 ## Backups
 
 What to back up:

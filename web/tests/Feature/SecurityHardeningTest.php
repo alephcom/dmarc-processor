@@ -92,4 +92,17 @@ class SecurityHardeningTest extends TestCase
         $this->get('http://dmarc.msp.test/up', ['X-Forwarded-Host' => 'evil.example', 'X-Forwarded-Proto' => 'https'])->assertOk();
         $this->assertSame('dmarc.msp.test', request()->getHost());
     }
+
+    public function test_responses_carry_security_headers(): void
+    {
+        $r = $this->get('/app/login')->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $this->assertStringContainsString("frame-ancestors 'none'", $r->headers->get('Content-Security-Policy'));
+        $r->assertHeaderMissing('Strict-Transport-Security');
+
+        // Behind Caddy the request is HTTPS: HSTS is sent.
+        $this->get('/app/login', ['X-Forwarded-Proto' => 'https'])->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
 }

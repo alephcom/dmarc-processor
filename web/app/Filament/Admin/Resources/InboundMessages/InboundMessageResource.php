@@ -19,6 +19,10 @@ class InboundMessageResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInboxArrowDown;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Monitoring';
+
+    protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationLabel = 'Ingest queue';
 
     protected static ?string $modelLabel = 'inbound message';

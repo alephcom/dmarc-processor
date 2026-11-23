@@ -19,9 +19,11 @@ class AlertResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBellAlert;
 
-    protected static ?string $recordTitleAttribute = 'title';
+    protected static string|\UnitEnum|null $navigationGroup = 'Monitoring';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
+
+    protected static ?string $recordTitleAttribute = 'title';
 
     public static function canCreate(): bool
     {

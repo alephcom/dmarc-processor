@@ -1,2 +1,9 @@
+# The public home page and account request form may be indexed; nothing behind sign-in or a link.
 User-agent: *
-Disallow:
+Disallow: /app
+Disallow: /admin
+Disallow: /reports
+Disallow: /shared
+Disallow: /invitations
+Disallow: /auth
+Disallow: /horizon

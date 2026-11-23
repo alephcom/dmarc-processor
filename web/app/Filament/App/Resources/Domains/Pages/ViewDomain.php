@@ -51,6 +51,11 @@ class ViewDomain extends ViewRecord
                 fn () => route('reports.domain', ['domain' => $this->record, 'period' => $this->days]),
                 fn () => ShareLinks::domain($this->record, $this->days),
             ),
+            Action::make('rawReports')
+                ->label('Raw reports')
+                ->icon(Heroicon::OutlinedDocumentText)
+                ->color('gray')
+                ->url(fn (Domain $record) => DomainResource::getUrl('reports', ['record' => $record])),
             Action::make('setup')
                 ->label(fn (Domain $record) => $record->isOnboarding() ? 'Continue setup' : 'Setup wizard')
                 ->icon(Heroicon::OutlinedSparkles)
