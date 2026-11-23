@@ -1,6 +1,6 @@
 module github.com/alephcom/dmarc-processor/smtp-receiver
 
-go 1.24.7
+go 1.26.11
 
 require github.com/emersion/go-smtp v0.26.0
 
