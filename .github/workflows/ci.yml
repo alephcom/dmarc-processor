@@ -55,7 +55,7 @@ jobs:
         working-directory: smtp-receiver
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: smtp-receiver/go.mod
       - name: gofmt
@@ -75,7 +75,7 @@ jobs:
       - name: composer audit
         working-directory: web
         run: composer audit --locked
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: smtp-receiver/go.mod
       - name: govulncheck
