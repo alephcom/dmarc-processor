@@ -102,6 +102,9 @@ def main():
         if a.verbose:
             s.set_debuglevel(1)
         code, banner = s.connect(a.host, a.port)
+        # starttls() verifies the certificate against _host, which smtplib only sets when the
+        # host is passed to the constructor (we connect separately to report the banner).
+        s._host = a.host
     except (OSError, smtplib.SMTPException) as e:
         fail(f"connect: {e}")
         return 1
