@@ -9,6 +9,7 @@
 # Non-interactive: pass --non-interactive and set the answers as environment variables:
 #   APP_HOST REPORTS_DOMAIN MX_HOSTNAME ACME_EMAIL MAIL_HOST MAIL_PORT MAIL_USERNAME
 #   MAIL_PASSWORD MAIL_FROM_ADDRESS [IPINFO_TOKEN] [DMARC_BRAND_NAME]
+#   [PUBLIC_SITE_ENABLED=true TURNSTILE_SITE_KEY TURNSTILE_SECRET_KEY]   (public page + free account requests)
 #   [ADMIN_EMAIL ADMIN_NAME ADMIN_PASSWORD]   (creates the first MSP admin)
 #
 # See docs/INSTALL.md for what each setting means.
@@ -87,11 +88,32 @@ ask() {
         read -r -p "  ${question}${hint}: " answer
       fi
       answer="${answer:-$shown}"
-      [[ -n "$answer" || "$var" == IPINFO_TOKEN || "$var" == MAIL_USERNAME || "$var" == MAIL_PASSWORD ]] && break
+      [[ -n "$answer" || "$var" == IPINFO_TOKEN || "$var" == MAIL_USERNAME || "$var" == MAIL_PASSWORD || "$var" == TURNSTILE_* ]] && break
       warn "This is required."
     done
   fi
   printf -v "$var" '%s' "$answer"
+}
+
+# ask_yes_no VAR "Question"  → sets VAR to true/false. Defaults to the current value (false if unset);
+# non-interactive mode takes the environment value as is.
+ask_yes_no() {
+  local var="$1" question="$2" current
+  current="$(normalize_bool "${!1:-}")"
+  if [[ $INTERACTIVE -eq 1 ]]; then
+    local hint='[y/N]' reply
+    [[ "$current" == true ]] && hint='[Y/n]'
+    read -r -p "  ${question} ${hint} " reply
+    [[ -n "$reply" ]] && current="$(normalize_bool "$reply")"
+  fi
+  printf -v "$var" '%s' "$current"
+}
+
+normalize_bool() {
+  case "${1,,}" in
+    y|yes|true|1|on) echo true ;;
+    *) echo false ;;
+  esac
 }
 
 confirm() {
@@ -238,7 +260,7 @@ configure() {
 
   # Start from current .env values (or the caller's environment in non-interactive mode).
   local k
-  for k in APP_HOST REPORTS_DOMAIN MX_HOSTNAME ACME_EMAIL MAIL_HOST MAIL_PORT MAIL_USERNAME MAIL_PASSWORD MAIL_FROM_ADDRESS IPINFO_TOKEN DMARC_BRAND_NAME; do
+  for k in APP_HOST REPORTS_DOMAIN MX_HOSTNAME ACME_EMAIL MAIL_HOST MAIL_PORT MAIL_USERNAME MAIL_PASSWORD MAIL_FROM_ADDRESS IPINFO_TOKEN DMARC_BRAND_NAME PUBLIC_SITE_ENABLED TURNSTILE_SITE_KEY TURNSTILE_SECRET_KEY; do
     if [[ -z "${!k:-}" ]]; then
       local v; v="$(env_get "$k")"
       # Ignore the placeholder values from .env.example.
@@ -293,6 +315,19 @@ configure() {
   ask DMARC_BRAND_NAME "Your company name (shown on reports)" "DMARC Monitor"
   ask IPINFO_TOKEN "IPinfo token for better sender identification (blank to use DB-IP)"
 
+  echo
+  echo "  ${DIM}Public home page at / explaining the service, with a form to request a free account (docs/INSTALL.md §7):${RESET}"
+  ask_yes_no PUBLIC_SITE_ENABLED "Show the public page and accept account requests?"
+  if [[ "$PUBLIC_SITE_ENABLED" == true ]]; then
+    echo "  ${DIM}Cloudflare Turnstile keeps spam off the request form. Create a widget for ${APP_HOST} in the${RESET}"
+    echo "  ${DIM}Cloudflare dashboard (Turnstile → Add widget, Managed mode). Leave blank to skip.${RESET}"
+    ask TURNSTILE_SITE_KEY "Turnstile site key"
+    ask TURNSTILE_SECRET_KEY "Turnstile secret key" "" secret
+    if [[ -z "$TURNSTILE_SITE_KEY" || -z "$TURNSTILE_SECRET_KEY" ]]; then
+      warn "Turnstile isn't fully configured: the form is protected only by rate limiting and a honeypot."
+    fi
+  fi
+
   env_set APP_HOST "$APP_HOST"
   env_set APP_URL "https://${APP_HOST}"
   env_set REPORTS_DOMAIN "$REPORTS_DOMAIN"
@@ -308,6 +343,9 @@ configure() {
   env_set MAIL_FROM_ADDRESS "$MAIL_FROM_ADDRESS"
   env_set DMARC_BRAND_NAME "$DMARC_BRAND_NAME"
   env_set IPINFO_TOKEN "$IPINFO_TOKEN"
+  env_set PUBLIC_SITE_ENABLED "$PUBLIC_SITE_ENABLED"
+  env_set TURNSTILE_SITE_KEY "$TURNSTILE_SITE_KEY"
+  env_set TURNSTILE_SECRET_KEY "$TURNSTILE_SECRET_KEY"
 
   # Secrets: generated once, never overwritten on re-runs.
   [[ -n "$(env_get APP_KEY)" ]] || env_set APP_KEY "base64:$(openssl rand -base64 32)"
@@ -414,6 +452,9 @@ post_install() {
 summary() {
   local app_host; app_host="$(env_get APP_HOST)"
   step "Done"
+  if [[ "$(env_get PUBLIC_SITE_ENABLED)" == true ]]; then
+    echo "  Public site:      https://${app_host}/  (requests appear under Admin → Account requests)"
+  fi
   cat <<EOF
   MSP admin:        https://${app_host}/admin
   Customer sign-in: https://${app_host}/app

@@ -38,7 +38,7 @@ cd dmarc-processor && sudo ./install.sh
 
 The script:
 - checks the server (ports 25/80/443 free, memory) and offers to install Docker from Docker's official repository;
-- asks for your hostnames and SMTP relay, generates every secret and writes `.env` (mode 600);
+- asks for your hostnames and SMTP relay, and whether to turn on the public home page with free account requests (plus its Cloudflare Turnstile keys, section 7); generates every secret and writes `.env` (mode 600);
 - checks that your DNS resolves, then builds and starts the stack;
 - downloads the IP database, creates the first MSP admin, and runs `dmarc:install --check`.
 
@@ -143,7 +143,7 @@ The first time a customer's user signs in, they (or their admin) consent to the 
 
 ## 7. Public home page and free accounts (optional)
 
-By default `/` sends visitors straight to the sign-in page. To offer free hosted accounts, set in `.env`:
+By default `/` sends visitors straight to the sign-in page. To offer free hosted accounts, answer yes to the installer's public-page question (`sudo ./install.sh --reconfigure` on an existing install), or set in `.env`:
 
 ```
 PUBLIC_SITE_ENABLED=true
